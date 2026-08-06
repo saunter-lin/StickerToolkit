@@ -10,12 +10,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PIL import Image, ImageDraw
 from PySide6.QtCore import QEventLoop, QSettings, QTimer
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 from sticker_toolkit.core import ProcessingOptions, ProcessingResult
 from sticker_toolkit.services import StickerService
 from sticker_toolkit.ui.desktop.controllers import StickerController
 from sticker_toolkit.ui.desktop.main_window import MainWindow
+from sticker_toolkit.ui.desktop.output_paths import suggested_output_directory
 from sticker_toolkit.ui.desktop.view_model import (
     DesktopFormData,
     DesktopValidationError,
@@ -88,6 +89,29 @@ class DesktopViewModelTests(unittest.TestCase):
         self.assertEqual(options.banner_path, banner.resolve())
         self.assertFalse(options.create_preview)
         self.assertFalse(options.create_zip)
+
+    def test_output_directory_must_be_writable(self) -> None:
+        with (
+            patch(
+                "sticker_toolkit.ui.desktop.view_model.output_directory_is_writable",
+                return_value=False,
+            ),
+            self.assertRaisesRegex(DesktopValidationError, "無法寫入"),
+        ):
+            build_processing_options(self.form())
+
+
+class DesktopOutputPathTests(unittest.TestCase):
+    def test_suggested_output_uses_source_stem(self) -> None:
+        cases = {
+            "berry.png": "berry_output",
+            "中文 貼圖.JPG": "中文 貼圖_output",
+            "my.sticker.sheet.PNG": "my.sticker.sheet_output",
+        }
+        for source_name, expected in cases.items():
+            with self.subTest(source_name=source_name):
+                source = Path("/source") / source_name
+                self.assertEqual(suggested_output_directory(source), Path("/source") / expected)
 
 
 class DesktopWorkerTests(unittest.TestCase):
@@ -203,6 +227,43 @@ class MainWindowStateTests(unittest.TestCase):
 
     def test_start_disabled_without_source(self) -> None:
         self.assertFalse(self.window.start_button.isEnabled())
+        self.assertEqual(self.window.output_edit.text(), "")
+
+    def test_automatic_output_updates_with_each_source(self) -> None:
+        first = Path(self.test_temp.name) / "berry.png"
+        second = Path(self.test_temp.name) / "中文.貼圖.PNG"
+        self.window._apply_source_path(first)
+        self.assertEqual(self.window.output_edit.text(), str(first.parent / "berry_output"))
+        self.window._apply_source_path(second)
+        self.assertEqual(self.window.output_edit.text(), str(second.parent / "中文.貼圖_output"))
+
+    def test_manual_output_is_not_replaced_by_new_source(self) -> None:
+        manual = Path(self.test_temp.name) / "自訂輸出"
+        manual.mkdir()
+        with patch.object(QFileDialog, "getExistingDirectory", return_value=str(manual)):
+            self.window._choose_output()
+        self.window._apply_source_path(Path(self.test_temp.name) / "another.sheet.png")
+        self.assertEqual(self.window.output_edit.text(), str(manual))
+        self.assertEqual(self.window.settings.value("output_directory_mode"), "manual")
+        self.assertEqual(self.window.settings.value("last_manual_output_directory"), str(manual))
+
+    def test_settings_restore_only_existing_manual_output(self) -> None:
+        manual = Path(self.test_temp.name) / "saved"
+        manual.mkdir()
+        self.window.settings.setValue("output_directory_mode", "manual")
+        self.window.settings.setValue("last_manual_output_directory", str(manual))
+        with patch.object(QMessageBox, "information"):
+            self.window.close()
+        self.window = MainWindow()
+        self.assertEqual(self.window.output_edit.text(), str(manual))
+        self.assertTrue(self.window._output_user_selected)
+
+        self.window.settings.setValue("last_manual_output_directory", str(manual / "missing"))
+        with patch.object(QMessageBox, "information"):
+            self.window.close()
+        self.window = MainWindow()
+        self.assertEqual(self.window.output_edit.text(), "")
+        self.assertFalse(self.window._output_user_selected)
 
     def test_banner_controls_follow_platform(self) -> None:
         self.window.platform_combo.setCurrentIndex(self.window.platform_combo.findData("line"))

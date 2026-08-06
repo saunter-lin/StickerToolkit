@@ -13,6 +13,8 @@ from sticker_toolkit.core import (
     StickerToolkitError,
 )
 
+from .output_paths import output_directory_is_writable
+
 
 @dataclass(frozen=True)
 class DesktopFormData:
@@ -49,6 +51,9 @@ def validate_form(data: DesktopFormData) -> None:
         raise DesktopValidationError("找不到來源圖片，請重新選擇。")
     if not data.output_directory.strip():
         raise DesktopValidationError("請選擇輸出目錄。")
+    output = Path(data.output_directory).expanduser()
+    if not output_directory_is_writable(output):
+        raise DesktopValidationError("輸出目錄無法寫入，請選擇其他位置。")
     if data.banner_path.strip() and not Path(data.banner_path).expanduser().is_file():
         raise DesktopValidationError("找不到微信 Banner 圖片，請重新選擇或清除。")
 

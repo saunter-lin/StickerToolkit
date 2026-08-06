@@ -32,6 +32,7 @@ from sticker_toolkit.core import ProcessingResult
 from sticker_toolkit.version import __version__
 
 from .controllers import StickerController
+from .output_paths import suggested_output_directory
 from .platform_utils import open_in_file_manager
 from .view_model import (
     DesktopFormData,
@@ -118,7 +119,7 @@ class MainWindow(QMainWindow):
 
         output_group = QGroupBox("輸出位置")
         output_layout = QHBoxLayout(output_group)
-        self.output_edit = self._path_edit("請選擇輸出目錄")
+        self.output_edit = self._path_edit("選擇來源圖片後自動建立輸出位置")
         self.output_button = QPushButton("選擇目錄")
         self.output_button.clicked.connect(self._choose_output)
         output_layout.addWidget(self.output_edit, 1)
@@ -177,8 +178,9 @@ class MainWindow(QMainWindow):
         platform = str(self.settings.value("platform", "line"))
         index = self.platform_combo.findData(platform)
         self.platform_combo.setCurrentIndex(index if index >= 0 else 0)
-        output = str(self.settings.value("last_output_directory", ""))
-        if output:
+        mode = str(self.settings.value("output_directory_mode", ""))
+        output = str(self.settings.value("last_manual_output_directory", ""))
+        if mode == "manual" and output and Path(output).is_dir():
             self.output_edit.setText(output)
             self._output_user_selected = True
         geometry = self.settings.value("window_geometry")
@@ -200,10 +202,14 @@ class MainWindow(QMainWindow):
         if not path:
             return
         source = Path(path)
+        self._apply_source_path(source)
+
+    def _apply_source_path(self, source: Path) -> None:
+        """Apply a selected source and refresh only an automatic output suggestion."""
         self.source_edit.setText(str(source))
         self.settings.setValue("last_source_directory", str(source.parent))
         if not self._output_user_selected:
-            self.output_edit.setText(str(source.parent / "output"))
+            self.output_edit.setText(str(suggested_output_directory(source)))
         self._refresh_start_enabled()
 
     @Slot()
@@ -220,12 +226,13 @@ class MainWindow(QMainWindow):
     @Slot()
     def _choose_output(self) -> None:
         path = QFileDialog.getExistingDirectory(
-            self, "選擇輸出目錄", self._dialog_directory("last_output_directory")
+            self, "選擇輸出目錄", self._dialog_directory("last_manual_output_directory")
         )
         if path:
             self.output_edit.setText(path)
             self._output_user_selected = True
-            self.settings.setValue("last_output_directory", path)
+            self.settings.setValue("output_directory_mode", "manual")
+            self.settings.setValue("last_manual_output_directory", path)
             self._refresh_start_enabled()
 
     @Slot()
@@ -261,7 +268,6 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "輸入資料不完整", str(exc))
             return
         self.settings.setValue("platform", options.platform)
-        self.settings.setValue("last_output_directory", str(options.output_directory))
         self.progress_bar.setValue(0)
         self.status_label.setText("正在啟動處理…")
         self.result_text.clear()
@@ -344,6 +350,5 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         self.settings.setValue("platform", self.platform_combo.currentData())
-        self.settings.setValue("last_output_directory", self.output_edit.text())
         self.settings.setValue("window_geometry", self.saveGeometry())
         super().closeEvent(event)
