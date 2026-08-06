@@ -1,13 +1,22 @@
-# Multi Platform Sticker Toolkit v1.3.0（macOS）
+# Sticker Toolkit v1.3.0（macOS／Windows）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
-版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3.0 是首個正式 Desktop 版本。
+版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3.0 是首個正式桌面版。
+
+## 支援平台
+
+| 平台 | 架構 | 發布格式 | 狀態 |
+| --- | --- | --- | --- |
+| macOS | Apple Silicon（arm64） | DMG | ✅ 正式支援 |
+| Windows 10／11 | x64 | onedir ZIP | ✅ 正式支援 |
+
+正式安裝包與 SHA-256 校驗檔請從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載。
 
 ## 功能
 
 - 支援 `.png`、`.jpg`、`.jpeg` 4×4 貼圖合集
-- 一次執行 Split → Trim → Safe Margin，平台 exporter 共用 16 張處理結果
+- 一次執行 Split → Trim → Safe Margin，各平台輸出器共用 16 張處理結果
 - 移除透明空白或與邊界相連的近白背景
 - 保持比例、透明背景、置中及安全留白
 - LINE：自選 `main.png`、`tab.png`，規格驗證、Preview 與 ZIP
@@ -16,11 +25,11 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 - Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
 - 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
 
-## macOS 操作方式
+## 使用方式
 
-### 桌面介面（v1.3.0）
+### 從原始碼啟動桌面介面
 
-先安裝桌面 optional dependency：
+先安裝桌面版選用相依套件：
 
 ```bash
 python3 -m venv .venv
@@ -39,15 +48,12 @@ PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
 
 選擇來源圖片後，Desktop 會建議同層的 `<來源檔名>_output` 作為輸出根目錄，例如 `berry.png` 對應 `berry_output/`、`my.sticker.sheet.png` 對應 `my.sticker.sheet_output/`。在本次操作中手動按「選擇目錄」後，自訂位置優先，不會因重新選擇來源而被覆蓋；只有有效且由使用者手動選擇的目錄會由 QSettings 恢復。建議位置不可寫時會在開始處理前顯示錯誤，不會改用系統暫存目錄。
 
-桌面設定使用 Qt `QSettings`，macOS 通常保存於 `~/Library/Preferences/` 的 StickerToolkit 設定中。封裝版與原始碼版使用相同的處理核心；原始碼版需準備 Python 環境，封裝版則自帶 Python、Qt 與 Pillow。Log 位於：
+桌面設定使用 Qt `QSettings`。封裝版與原始碼版使用相同的處理核心；原始碼版需準備 Python 環境，封裝版則自帶 Python、Qt 與 Pillow。實際畫面會依作業系統字型與 Qt 主題略有差異。
 
-```text
-~/Library/Logs/StickerToolkit/sticker_toolkit.log
-```
+- macOS Log：`~/Library/Logs/StickerToolkit/sticker_toolkit.log`
+- Windows Log：`%LOCALAPPDATA%/StickerToolkit/Logs/sticker_toolkit.log`
 
-Windows Log 預設位於 `%LOCALAPPDATA%/StickerToolkit/Logs/`。應用資源一律透過 `get_resource_path()` 取得，兼容原始碼與 PyInstaller frozen 模式。
-
-Repository 已提供 v1.3.0 Desktop GUI 截圖；實際外觀會依作業系統字型與 Qt 主題略有差異。
+應用資源一律透過 `get_resource_path()` 取得，相容於原始碼與 PyInstaller frozen 模式。
 
 ### macOS 封裝版（v1.3.0）
 
@@ -57,7 +63,9 @@ Repository 已提供 v1.3.0 Desktop GUI 截圖；實際外觀會依作業系統�
 StickerToolkit-v<version>-macOS-<arch>.dmg
 ```
 
-開啟 DMG 後，將 `Sticker Toolkit.app` 拖到 `Applications` 捷徑，再從「應用程式」啟動。App 目前是 unsigned／未公證測試建置；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。專案不會宣稱已完成 Apple Developer 簽章或 notarization。
+開啟 DMG 後，將 `Sticker Toolkit.app` 拖到 `Applications` 捷徑，再從「應用程式」啟動。App 目前未使用 Apple Developer 簽章或公證；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。
+
+### Windows x64 封裝版（v1.3.0）
 
 Windows x64 onedir 已在原生 Windows 10 完成建置、LINE／WeChat 處理、中文與空白路徑及啟動驗證。請下載完整 Windows ZIP 並整包解壓，不要單獨執行或散布其中的 EXE。
 
@@ -189,7 +197,7 @@ Filesystem outputs
 
 Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面 worker 使用 Qt signal 將進度、結果與錯誤送回主執行緒。macOS arm64 DMG 與 Windows x64 onedir 均已完成原生環境建置及功能驗證。
 
-### 新套件入口
+### 套件入口
 
 ```bash
 PYTHONPATH=src python3 -m sticker_toolkit.ui.cli --input input/example.png --platform line
@@ -264,8 +272,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:
 - 合集必須是規則排列的 4×4；不支援其他格數或不等寬排版。
 - JPG 壓縮雜色可能影響白底移除，建議優先使用含透明背景的 PNG。
 - `tab.png` 不使用角色臉部辨識模型，只會緊密裁切並放大完整主體。
-- 首次安裝 Pillow 時需要網路，且 macOS 必須已有 Python 3。
-- macOS 測試封裝目前僅驗證 Apple Silicon `arm64`，且未簽章、未公證。
+- 從原始碼安裝相依套件時需要網路及 Python 3。
+- macOS 正式封裝目前僅支援 Apple Silicon `arm64`，且未簽章、未公證。
 - Windows 套件尚未簽章，可能出現 SmartScreen 或防毒誤報；必須保留完整 onedir 結構。
 
 ## 版本資訊
