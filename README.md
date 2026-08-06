@@ -1,100 +1,142 @@
-# Sticker Toolkit v1.1.0（macOS）
+# Multi Platform Sticker Toolkit v1.2.0（macOS）
 
-這個工具會把一張 4×4、共 16 格的 PNG/JPG 合集圖切開，清除格子外圍的純白或透明空白，再製作 LINE 貼圖所需檔案。V1.1 可分別選擇 `main.png` 與 `tab.png` 的來源。
+Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
 ## 功能
 
-- 平均切割 4×4 合集圖為 16 張貼圖
-- 移除與邊界相連的純白背景或透明空白
-- 等比例縮放、置中並保留安全留白
-- 分別選擇 `main.png` 與 `tab.png` 的來源貼圖
-- 產生 16 格人工檢查預覽
-- 驗證 PNG 格式、RGBA 模式、尺寸及內容邊界
-- 自動建立 LINE 貼圖 ZIP
+- 支援 `.png`、`.jpg`、`.jpeg` 4×4 貼圖合集
+- 一次執行 Split → Trim → Safe Margin，平台 exporter 共用 16 張處理結果
+- 移除透明空白或與邊界相連的近白背景
+- 保持比例、透明背景、置中及安全留白
+- LINE：自選 `main.png`、`tab.png`，規格驗證、Preview 與 ZIP
+- WeChat：選用／自動偵測 `wechat_banner.png`、Preview、manifest 與 ZIP
+- 可選 LINE、WeChat 或兩者一起輸出
+- Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
+- 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
 
-## 使用方法
+## macOS 操作方式
 
-1. 將 4×4 合集圖片放進 `input` 資料夾。支援 `.png`、`.jpg`、`.jpeg`。
-2. 雙擊 `build.command`。
-3. 若 macOS 阻擋執行，請在 Finder 對 `build.command` 按右鍵，選擇「打開」後確認。
-4. 工具建立 16 張貼圖後會自動開啟帶編號的 `preview.png`。
-5. 回到終端機，分別輸入 `main.png` 與 `tab.png` 要使用的編號（1～16）。兩者可以不同；直接按 Enter 會使用 01，與 V1 相容。
-6. 完成後會再次開啟 `preview.png`，並自動開啟 `output` 資料夾。若不滿意，可再次雙擊 `build.command` 重新 Export。
+### 使用 input 資料夾
 
-若 `input` 有多張圖片，程式會使用「最後修改時間最新」的一張，並在終端機顯示所選檔名。原始圖片不會被修改。
+1. 將貼圖合集放入 `input/`。
+2. 選用：將 Banner 命名為 `wechat_banner.png`，放在同一資料夾。
+3. 雙擊 `build.command`。若 macOS 阻擋，請在 Finder 對檔案按右鍵並選擇「打開」。
+4. 選擇 LINE、WeChat 或同時輸出。
+5. LINE 模式會繼續詢問 main 與 tab 的貼圖編號；WeChat 模式若沒有 Banner，可輸入 Banner 路徑或直接略過。
+6. 完成後會開啟 Preview 與 `output/`。
 
-首次執行時，若系統 Python 尚未安裝 Pillow，工具會在專案內建立 `.venv` 並安裝 `requirements.txt` 的依賴。電腦需已安裝 Python 3；首次安裝 Pillow 時需要網路。
+直接按 Enter 選擇預設值時，仍會輸出 LINE 並使用第 1 張作為 main 與 tab，保留 v1.1 操作方式。非互動模式遇到多張合集時，沿用舊版規則選擇最後修改時間最新者。
 
-## 輸出內容
+### 拖放資料夾
 
-- `01.png`～`16.png`：370×320 px RGBA PNG
-- `main.png`：240×240 px RGBA PNG，使用指定貼圖並緊密裁切、放大、置中
-- `tab.png`：96×74 px RGBA PNG，使用另一張指定貼圖並針對小尺寸緊密裁切、置中
-- `preview.png`：16 張貼圖總覽（僅供檢查，不放入 ZIP）
-- `line_stickers.zip`：包含 16 張貼圖、`main.png` 與 `tab.png`，共 18 個檔案
+可將資料夾拖到 `build.command` 上。假設資料夾內容如下：
 
-## LINE 貼圖尺寸
+```text
+MySticker/
+├── Berry.png
+└── wechat_banner.png
+```
 
-| 檔案 | 尺寸 | 格式 |
-| --- | --- | --- |
-| `01.png`～`16.png` | 370×320 px | RGBA PNG |
-| `main.png` | 240×240 px | RGBA PNG |
-| `tab.png` | 96×74 px | RGBA PNG |
+工具會把 `wechat_banner.png` 識別為 Banner，其他 PNG/JPG 視為合集候選。若候選超過一張，互動模式會列出檔名讓使用者選擇。
 
-程式只移除「與每格邊界相連」的近白背景，因此圖案內部封閉的白色區域會保留。JPG 壓縮可能使白底出現雜色；若效果不理想，建議使用 PNG 原圖。
-
-## 調整安全留白
-
-一般貼圖留白位於 `sticker_processor.py`，封面與標籤留白位於 `cover.py`：
-
-- `STICKER_PADDING = 20`：16 張貼圖四周留白
-- `MAIN_PADDING = 5`：主圖四周留白
-- `TAB_PADDING = 5`：分頁圖四周留白
-
-數值單位為像素，越大代表留白越多、圖案越小。
-
-## 命令列用法（選用）
+## 命令列使用方式
 
 ```bash
 python3 sticker_processor.py
-python3 sticker_processor.py --input /完整路徑/指定圖片.png
-python3 sticker_processor.py --main 9 --tab 3
-python3 sticker_processor.py --interactive --open-preview
+python3 sticker_processor.py /path/to/MySticker --interactive
+python3 sticker_processor.py --input /path/to/Berry.png --platform line --main 9 --tab 3
+python3 sticker_processor.py --input /path/to/Berry.png --platform wechat --banner /path/to/wechat_banner.png
+python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9 --tab 3
 ```
 
-未加入 `--interactive` 且沒有指定 `--main`／`--tab` 時，兩者預設使用第 1 張，保留 V1 的非互動行為。
+`--platform` 支援 `line`、`wechat`、`both`；未指定時預設 `line`。
 
-## 程式模組
+## 輸出內容
 
-- `sticker_processor.py`：輸入選擇、4×4 切割與流程控制
-- `cover.py`：`main.png`、`tab.png` 最佳化
-- `preview.py`：16 格編號預覽
-- `exporter.py`：PNG 驗證與 ZIP 打包
+### LINE
+
+- `01.png`～`16.png`：370×320 px RGBA PNG
+- `main.png`：240×240 px RGBA PNG
+- `tab.png`：96×74 px RGBA PNG
+- `preview.png`：16 張貼圖檢查圖
+- `line_sticker_package.zip`：v1.2 正式 LINE 套件
+- `line_stickers.zip`：內容相同的 v1.1 相容檔名
+
+### WeChat
+
+- `wechat_preview.png`：顯示 16 張貼圖、Banner 與 ZIP 內容
+- `wechat_sticker_package.zip`：ZIP 結構如下：
+
+```text
+wechat/
+├── stickers/
+│   ├── 01.png
+│   ├── ...
+│   └── 16.png
+├── banner/
+│   └── wechat_banner.png   # 未提供 Banner 時省略
+└── manifest.json
+```
+
+Banner 尺寸集中於 `core/config.py` 的 `WECHAT_CONFIG`。目前採用可調整的 750×400 contain 畫布，尚未宣稱為微信官方規格；發布到特定微信平台前請依最新官方文件確認，程式內保留 TODO。
+
+## 架構
+
+```text
+Sticker Sheet
+    ↓
+core/images.py：Split → Trim → Safe Margin（一次）
+    ↓
+Shared Sticker Images
+    ├── exporters/line.py
+    └── exporters/wechat.py
+```
+
+- `core/config.py`：`LINE_CONFIG`、`WECHAT_CONFIG` 與集中尺寸
+- `core/discovery.py`：檔案／資料夾輸入、候選合集與 Banner 偵測
+- `core/images.py`：共用圖片管線
+- `exporters/common.py`：共用 PNG 驗證與 ZIP 寫入
+- `exporters/line.py`：LINE exporter
+- `exporters/wechat.py`：WeChat exporter
+- `sticker_processor.py`：維持原本終端流程的控制器
+- `cover.py`、`exporter.py`：v1.1 程式介面的相容層
+
+## 調整尺寸與安全留白
+
+所有平台尺寸集中在 `core/config.py`：
+
+- `LINE_CONFIG.sticker_size`、`sticker_padding`
+- `LINE_CONFIG.main_size`、`main_padding`
+- `LINE_CONFIG.tab_size`、`tab_padding`
+- `WECHAT_CONFIG.banner_size`、`banner_padding`
+
+## 開發與測試
+
+```bash
+python3 -m compileall -q .
+python3 -m unittest discover -s tests -v
+ruff check .
+mypy sticker_processor.py core exporters
+```
 
 ## 已知限制
 
-- 輸入必須是規則排列的 4×4 合集圖；目前不支援其他格數或不等寬排版。
-- 白底清除以與格子邊界相連的近白像素判斷；JPG 壓縮雜色可能影響結果，建議優先使用 PNG。
-- `tab.png` 會緊密裁切並盡量放大完整主體，但不使用人臉或角色臉部辨識模型。
-- 工具需在 macOS 安裝 Python 3；首次安裝 Pillow 時需要網路。
+- 合集必須是規則排列的 4×4；不支援其他格數或不等寬排版。
+- JPG 壓縮雜色可能影響白底移除，建議優先使用含透明背景的 PNG。
+- WeChat Banner 官方尺寸尚待依實際上架管道確認。
+- `tab.png` 不使用角色臉部辨識模型，只會緊密裁切並放大完整主體。
+- 首次安裝 Pillow 時需要網路，且 macOS 必須已有 Python 3。
 
 ## 版本資訊
 
-目前版本：`v1.1.0`
+目前版本：`v1.2.0`
 
-- 支援分別選擇 `main.png` 與 `tab.png`。
-- 加入封面與小尺寸標籤最佳化。
-- 保留 V1 的非互動預設行為。
+詳見 [CHANGELOG.md](CHANGELOG.md)。
 
 ## Roadmap
 
+- 確認並加入不同微信上架管道的官方尺寸 preset
 - 支援其他列數與欄數的合集圖
-- 提供圖形化點選 main／tab 的介面
+- 提供圖形化平台、main、tab 與 Banner 選擇介面
 - 提供裁切與安全留白即時調整
-- 加入批次處理與更多輸出預設
-
-## 建議 Commit Message
-
-```text
-feat: add selectable cover and tab image with optimized export
-```
+- 加入更多平台 exporter 與批次處理
