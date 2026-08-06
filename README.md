@@ -61,6 +61,17 @@ StickerToolkit-v<version>-macOS-<arch>.dmg
 
 Windows x64 onedir 已在原生 Windows 10 完成建置、LINE／WeChat 處理、中文與空白路徑及啟動驗證。請下載完整 Windows ZIP 並整包解壓，不要單獨執行或散布其中的 EXE。
 
+### Windows Security Notice
+
+Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一次執行時可能會出現 Microsoft Defender SmartScreen。這不代表程式含有病毒，而是 Windows 對尚未建立信譽的未簽章程式所採用的正常保護機制。Sticker Toolkit 是開源專案，建議僅從本專案的 GitHub Release 下載；Release 同時提供 `SHA256SUMS.txt`，可用來驗證下載檔案的完整性。
+
+若出現 `Windows protected your PC`：
+
+1. 按下 `More info`（更多資訊）。
+2. 再按 `Run anyway`（仍要執行）。
+
+Windows Release 是完整的 onedir ZIP。請先完整解壓縮，不要直接從 ZIP 內執行，也不要只複製 `StickerToolkit.exe`；執行時必須保留整個資料夾結構。未來若專案採用 Windows Code Signing Certificate，此提示可能會逐漸消失。
+
 封裝使用 `assets/app_icon_packaging.png`：外角透明、移除底部標題與副標題，保留貼圖格、魔法棒、星光與聊天氣泡。原始品牌圖仍保存在 `assets/app_icon.png`，不會被封裝流程覆蓋。
 
 ### 使用 input 資料夾
