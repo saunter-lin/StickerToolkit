@@ -13,6 +13,37 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 
 正式安裝包與 SHA-256 校驗檔請從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載。
 
+## Quick Start
+
+一般使用者不需要安裝 Python、pip 或建立 virtual environment，直接從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載對應平台的正式版本即可。
+
+### macOS（Apple Silicon）
+
+1. 下載 `StickerToolkit-v1.3.0-macOS-arm64.dmg`。
+2. 開啟 DMG，將 `Sticker Toolkit.app` 拖曳至 `Applications`。
+3. 從「應用程式」啟動 Sticker Toolkit。
+
+App 目前未使用 Apple Developer 簽章或公證；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。
+
+### Windows x64
+
+1. 下載 Windows x64 onedir ZIP。
+2. 完整解壓縮 ZIP，保留整個資料夾結構。
+3. 執行解壓縮資料夾內的 `StickerToolkit.exe`。
+
+請勿直接從 ZIP 內執行，也不要只複製或單獨散布 `StickerToolkit.exe`。
+
+### Windows Security Notice
+
+Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一次執行時可能會出現 Microsoft Defender SmartScreen。這不代表程式含有病毒，而是 Windows 對尚未建立信譽的未簽章程式所採用的正常保護機制。Sticker Toolkit 是開源專案，建議僅從本專案的 GitHub Release 下載；Release 同時提供 `SHA256SUMS.txt`，可用來驗證下載檔案的完整性。
+
+若出現 `Windows protected your PC`：
+
+1. 按下 `More info`（更多資訊）。
+2. 再按 `Run anyway`（仍要執行）。
+
+未來若專案採用 Windows Code Signing Certificate，此提示可能會逐漸消失。
+
 ## 功能
 
 - 支援 `.png`、`.jpg`、`.jpeg` 4×4 貼圖合集
@@ -24,105 +55,6 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 - 可選 LINE、WeChat 或兩者一起輸出
 - Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
 - 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
-
-## 使用方式
-
-### 從原始碼啟動桌面介面
-
-先安裝桌面版選用相依套件：
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e '.[desktop]'
-```
-
-從專案根目錄啟動：
-
-```bash
-PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
-```
-
-桌面版目前可選擇來源圖片、LINE／微信／兩者、微信 Banner 與輸出目錄；支援 4×4 設定驗證、Preview／ZIP 選項、背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
-
-![Sticker Toolkit v1.3.0 Desktop GUI](docs/images/sticker-toolkit-v1.3.png)
-
-選擇來源圖片後，Desktop 會建議同層的 `<來源檔名>_output` 作為輸出根目錄，例如 `berry.png` 對應 `berry_output/`、`my.sticker.sheet.png` 對應 `my.sticker.sheet_output/`。在本次操作中手動按「選擇目錄」後，自訂位置優先，不會因重新選擇來源而被覆蓋；只有有效且由使用者手動選擇的目錄會由 QSettings 恢復。建議位置不可寫時會在開始處理前顯示錯誤，不會改用系統暫存目錄。
-
-桌面設定使用 Qt `QSettings`。封裝版與原始碼版使用相同的處理核心；原始碼版需準備 Python 環境，封裝版則自帶 Python、Qt 與 Pillow。實際畫面會依作業系統字型與 Qt 主題略有差異。
-
-- macOS Log：`~/Library/Logs/StickerToolkit/sticker_toolkit.log`
-- Windows Log：`%LOCALAPPDATA%/StickerToolkit/Logs/sticker_toolkit.log`
-
-應用資源一律透過 `get_resource_path()` 取得，相容於原始碼與 PyInstaller frozen 模式。
-
-### macOS 封裝版（v1.3.0）
-
-目前封裝驗證平台為 Apple Silicon `arm64`，尚未宣稱支援 Intel 或 Universal。DMG 檔名格式為：
-
-```text
-StickerToolkit-v<version>-macOS-<arch>.dmg
-```
-
-開啟 DMG 後，將 `Sticker Toolkit.app` 拖到 `Applications` 捷徑，再從「應用程式」啟動。App 目前未使用 Apple Developer 簽章或公證；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。
-
-### Windows x64 封裝版（v1.3.0）
-
-Windows x64 onedir 已在原生 Windows 10 完成建置、LINE／WeChat 處理、中文與空白路徑及啟動驗證。請下載完整 Windows ZIP 並整包解壓，不要單獨執行或散布其中的 EXE。
-
-### Windows Security Notice
-
-Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一次執行時可能會出現 Microsoft Defender SmartScreen。這不代表程式含有病毒，而是 Windows 對尚未建立信譽的未簽章程式所採用的正常保護機制。Sticker Toolkit 是開源專案，建議僅從本專案的 GitHub Release 下載；Release 同時提供 `SHA256SUMS.txt`，可用來驗證下載檔案的完整性。
-
-若出現 `Windows protected your PC`：
-
-1. 按下 `More info`（更多資訊）。
-2. 再按 `Run anyway`（仍要執行）。
-
-Windows Release 是完整的 onedir ZIP。請先完整解壓縮，不要直接從 ZIP 內執行，也不要只複製 `StickerToolkit.exe`；執行時必須保留整個資料夾結構。未來若專案採用 Windows Code Signing Certificate，此提示可能會逐漸消失。
-
-封裝使用 `assets/app_icon_packaging.png`：外角透明、移除底部標題與副標題，保留貼圖格、魔法棒、星光與聊天氣泡。原始品牌圖仍保存在 `assets/app_icon.png`，不會被封裝流程覆蓋。
-
-### 使用 input 資料夾
-
-1. 將貼圖合集放入 `input/`。
-2. 選用：將任意檔名的橫向 PNG Banner 放在同一資料夾。
-3. 雙擊 `build.command`。若 macOS 阻擋，請在 Finder 對檔案按右鍵並選擇「打開」。
-4. 選擇 LINE、WeChat 或同時輸出。
-5. LINE 模式會繼續詢問 main 與 tab 的貼圖編號；WeChat 模式會詢問 cover 來源，panel icon 預設使用相同貼圖。若沒有 Banner，可輸入 Banner 路徑或直接略過。
-6. 完成後會開啟 Preview 與 `output/`。
-
-直接按 Enter 選擇預設值時，仍會輸出 LINE 並使用第 1 張作為 main 與 tab，保留 v1.1 操作方式。非互動模式遇到多張合集時，沿用舊版規則選擇最後修改時間最新者。
-
-### 拖放資料夾
-
-可將資料夾拖到 `build.command` 上。假設資料夾內容如下：
-
-```text
-MySticker/
-├── Berry.png
-└── my_image.png
-```
-
-Banner 偵測順序如下：
-
-1. `--banner` 手動指定路徑。
-2. 不分大小寫的 `wechat_banner` 或 `banner` 檔名，支援 PNG、JPG、JPEG、WebP；檔名符合時不限制原始比例。
-3. 其他剩餘圖片若為橫向，且套用 EXIF Orientation 後的寬高比與 `WECHAT_CONFIG.banner_size` 相差不超過 5%，即視為比例候選。
-4. 仍找不到時提示手動輸入；直接按 Enter 可略過。
-
-近方形圖片優先視為 4×4 合集，已選定的合集不會同時作為 Banner。多張同優先級 Banner 候選時，互動模式會列出檔名、方向修正後的尺寸與比例供選擇。所有 Banner 最後都經同一套 EXIF 方向校正、色彩轉換、等比例 contain 與置中流程。
-
-## 命令列使用方式
-
-```bash
-python3 sticker_processor.py
-python3 sticker_processor.py /path/to/MySticker --interactive
-python3 sticker_processor.py --input /path/to/Berry.png --platform line --main 9 --tab 3
-python3 sticker_processor.py --input /path/to/Berry.png --platform wechat --banner /path/to/any-name.png
-python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9 --tab 3 --wechat-cover 5
-```
-
-`--platform` 支援 `line`、`wechat`、`both`；未指定時預設 `line`。
 
 ## 輸出內容
 
@@ -174,7 +106,79 @@ output/
 
 所有 PNG 先以 RGBA、`optimize=True` 與最高壓縮等級輸出。若仍超過上限，依序嘗試 256、128、64、32 色的最佳化 PNG；仍超限時停止匯出並顯示中文錯誤，不會把超規素材標示為成功。
 
-## 架構
+## Development
+
+以下內容僅供開發者、Contributor，以及需要自行修改原始碼的使用者。一般使用者請直接從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載 macOS DMG 或 Windows x64 ZIP。
+
+### 從原始碼啟動桌面介面
+
+先安裝桌面版選用相依套件：
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[desktop]'
+```
+
+從專案根目錄啟動：
+
+```bash
+PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
+```
+
+桌面版可選擇來源圖片、LINE／微信／兩者、微信 Banner 與輸出目錄；支援背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
+
+![Sticker Toolkit v1.3.0 Desktop GUI](docs/images/sticker-toolkit-v1.3.png)
+
+選擇來源圖片後，Desktop 會建議同層的 `<來源檔名>_output` 作為輸出根目錄，例如 `berry.png` 對應 `berry_output/`。手動指定的輸出位置具有優先權，建議位置不可寫時會在開始處理前顯示錯誤，不會改用系統暫存目錄。
+
+- macOS Log：`~/Library/Logs/StickerToolkit/sticker_toolkit.log`
+- Windows Log：`%LOCALAPPDATA%/StickerToolkit/Logs/sticker_toolkit.log`
+
+### 開發者操作與技術參考
+
+#### 使用 input 資料夾
+
+1. 將貼圖合集放入 `input/`。
+2. 選用：將任意檔名的橫向 PNG Banner 放在同一資料夾。
+3. 雙擊 `build.command`。若 macOS 阻擋，請在 Finder 對檔案按右鍵並選擇「打開」。
+4. 選擇 LINE、WeChat 或同時輸出。
+5. LINE 模式會繼續詢問 main 與 tab 的貼圖編號；WeChat 模式會詢問 cover 來源，panel icon 預設使用相同貼圖。若沒有 Banner，可輸入 Banner 路徑或直接略過。
+6. 完成後會開啟 Preview 與 `output/`。
+
+直接按 Enter 選擇預設值時，仍會輸出 LINE 並使用第 1 張作為 main 與 tab，保留 v1.1 操作方式。非互動模式遇到多張合集時，沿用舊版規則選擇最後修改時間最新者。
+
+#### 拖放資料夾
+
+可將資料夾拖到 `build.command` 上。假設資料夾內容如下：
+
+```text
+MySticker/
+├── Berry.png
+└── my_image.png
+```
+
+Banner 偵測順序如下：
+
+1. `--banner` 手動指定路徑。
+2. 不分大小寫的 `wechat_banner` 或 `banner` 檔名，支援 PNG、JPG、JPEG、WebP；檔名符合時不限制原始比例。
+3. 其他剩餘圖片若為橫向，且套用 EXIF Orientation 後的寬高比與 `WECHAT_CONFIG.banner_size` 相差不超過 5%，即視為比例候選。
+4. 仍找不到時提示手動輸入；直接按 Enter 可略過。
+
+近方形圖片優先視為 4×4 合集，已選定的合集不會同時作為 Banner。多張同優先級 Banner 候選時，互動模式會列出檔名、方向修正後的尺寸與比例供選擇。所有 Banner 最後都經同一套 EXIF 方向校正、色彩轉換、等比例 contain 與置中流程。
+
+### 命令列使用方式
+
+```bash
+python3 sticker_processor.py
+python3 sticker_processor.py /path/to/MySticker --interactive
+python3 sticker_processor.py --input /path/to/Berry.png --platform line --main 9 --tab 3
+python3 sticker_processor.py --input /path/to/Berry.png --platform wechat --banner /path/to/any-name.png
+python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9 --tab 3 --wechat-cover 5
+```
+
+`--platform` 支援 `line`、`wechat`、`both`；未指定時預設 `line`。
+
+### 架構
 
 ```text
 UI / CLI
@@ -197,7 +201,7 @@ Filesystem outputs
 
 Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面 worker 使用 Qt signal 將進度、結果與錯誤送回主執行緒。macOS arm64 DMG 與 Windows x64 onedir 均已完成原生環境建置及功能驗證。
 
-### 套件入口
+#### 套件入口
 
 ```bash
 PYTHONPATH=src python3 -m sticker_toolkit.ui.cli --input input/example.png --platform line
@@ -218,7 +222,7 @@ result = StickerService().process(
 )
 ```
 
-## 調整尺寸與安全留白
+### 調整尺寸與安全留白
 
 所有平台尺寸集中在 `core/config.py`：
 
@@ -227,7 +231,7 @@ result = StickerService().process(
 - `LINE_CONFIG.tab_size`、`tab_padding`
 - `WECHAT_CONFIG` 集中管理 8～24 張數量範圍、240×240 貼圖、750×400 Banner、240×240 cover、50×50 panel icon，以及 500KB／100KB 上限
 
-## 開發與測試
+### 開發與測試
 
 安裝 Core、Desktop 與開發工具：
 
@@ -243,7 +247,7 @@ QT_QPA_PLATFORM=offscreen PYTHONPATH=src .venv/bin/python -m unittest discover -
 PYTHONPATH=src .venv/bin/mypy sticker_processor.py src/sticker_toolkit core exporters
 ```
 
-### 封裝
+### Build／封裝
 
 安裝 PyInstaller：
 
