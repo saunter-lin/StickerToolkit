@@ -18,5 +18,8 @@
 ### Changed
 
 - LINE 統一只輸出 `line_sticker.zip`，移除重複 ZIP。
-- WeChat ZIP 移除 `manifest.json`，Banner 統一輸出為 `wechat/banner/banner.png`。
+- WeChat ZIP 移除 `manifest.json`，並統一為 `wechat_sticker/` 純圖片結構。
 - WeChat Banner 改為手動路徑、已知檔名、±5% 比例的分級備援偵測，並支援 EXIF Orientation。
+- WeChat Export 對齊 240×240 表情圖、750×400 Banner、240×240 cover 與 50×50 panel icon 規格。
+- WeChat 加入 8～24 張數量驗證、素材檔案上限、PNG 最佳化與完整性狀態。
+- WeChat ZIP 統一為 `wechat_sticker.zip`，內容只保留實際上傳圖片。

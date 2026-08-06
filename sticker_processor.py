@@ -102,6 +102,7 @@ def process(
     banner_option: Path | None,
     main_choice: int | None,
     tab_choice: int | None,
+    wechat_cover_choice: int | None,
     interactive: bool,
     open_preview: bool,
 ) -> None:
@@ -128,15 +129,31 @@ def process(
         exported.append(("LINE", export_line(stickers, OUTPUT_DIR, main_index, tab_index)))
 
     if use_wechat:
+        cover_index = choose_number("WeChat cover.png", wechat_cover_choice, interactive)
         banner_path = choose_banner(banner_option, detected_banner, interactive, True)
-        zip_path, zip_contents, prepared_banner_path = export_wechat(stickers, OUTPUT_DIR, banner_path)
+        result = export_wechat(stickers, OUTPUT_DIR, banner_path, cover_index)
         prepared_banner: Image.Image | None = None
-        if prepared_banner_path is not None:
-            prepared_banner = load_image(prepared_banner_path, "已處理 Banner")
+        if result.banner_path is not None:
+            prepared_banner = load_image(result.banner_path, "已處理 Banner")
         wechat_preview = OUTPUT_DIR / WECHAT_CONFIG.preview_name
-        save_rgba_png(make_wechat_preview(stickers, prepared_banner, zip_contents), wechat_preview)
-        exported.append(("WeChat", zip_path))
+        save_rgba_png(
+            make_wechat_preview(
+                stickers,
+                prepared_banner,
+                result.zip_contents,
+                result.validation_messages,
+                result.complete,
+            ),
+            wechat_preview,
+        )
+        exported.append(("WeChat", result.zip_path))
         print(f"WeChat Preview：{wechat_preview}")
+        for message in result.validation_messages:
+            print(message)
+        if result.complete:
+            print("微信素材符合上傳規格。")
+        else:
+            print("微信素材尚未完整，可能無法直接提交。")
         if open_preview:
             open_on_macos(wechat_preview)
 
@@ -164,6 +181,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--platform", choices=("line", "wechat", "both"), help="輸出平台；預設 LINE")
     parser.add_argument("--main", type=int, help="LINE main.png 使用的貼圖編號（1～16）")
     parser.add_argument("--tab", type=int, help="LINE tab.png 使用的貼圖編號（1～16）")
+    parser.add_argument("--wechat-cover", type=int, help="微信 cover.png 與 panel_icon.png 來源編號")
     parser.add_argument("--interactive", action="store_true", help="使用終端互動選擇")
     parser.add_argument("--open-preview", action="store_true", help="在 macOS 自動開啟 Preview")
     return parser
@@ -190,6 +208,7 @@ def main() -> int:
             args.banner,
             args.main,
             args.tab,
+            args.wechat_cover,
             args.interactive,
             args.open_preview,
         )

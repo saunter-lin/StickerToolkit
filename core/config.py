@@ -20,6 +20,48 @@ class PlatformConfig:
     banner_padding: int = 0
 
 
+@dataclass(frozen=True)
+class WechatConfig:
+    name: str = "WeChat"
+    min_sticker_count: int = 8
+    max_sticker_count: int = 24
+    default_sticker_count: int = 16
+    sticker_width: int = 240
+    sticker_height: int = 240
+    sticker_max_bytes: int = 500 * 1024
+    sticker_padding: int = 12
+    banner_width: int = 750
+    banner_height: int = 400
+    banner_max_bytes: int = 500 * 1024
+    banner_padding: int = 0
+    cover_width: int = 240
+    cover_height: int = 240
+    cover_max_bytes: int = 500 * 1024
+    cover_padding: int = 12
+    panel_icon_width: int = 50
+    panel_icon_height: int = 50
+    panel_icon_max_bytes: int = 100 * 1024
+    panel_icon_padding: int = 3
+    zip_name: str = "wechat_sticker.zip"
+    preview_name: str = "wechat_preview.png"
+
+    @property
+    def sticker_size(self) -> tuple[int, int]:
+        return self.sticker_width, self.sticker_height
+
+    @property
+    def banner_size(self) -> tuple[int, int]:
+        return self.banner_width, self.banner_height
+
+    @property
+    def cover_size(self) -> tuple[int, int]:
+        return self.cover_width, self.cover_height
+
+    @property
+    def panel_icon_size(self) -> tuple[int, int]:
+        return self.panel_icon_width, self.panel_icon_height
+
+
 LINE_CONFIG = PlatformConfig(
     name="LINE",
     sticker_size=(370, 320),
@@ -32,14 +74,4 @@ LINE_CONFIG = PlatformConfig(
     tab_padding=5,
 )
 
-# TODO: 發布前依目標微信貼圖平台的最新官方文件確認 Banner 尺寸。
-# 目前採用可調整的 750×400 contain 畫布，不宣稱為微信官方規格。
-WECHAT_CONFIG = PlatformConfig(
-    name="WeChat",
-    sticker_size=LINE_CONFIG.sticker_size,
-    sticker_padding=LINE_CONFIG.sticker_padding,
-    zip_name="wechat_sticker_package.zip",
-    preview_name="wechat_preview.png",
-    banner_size=(750, 400),
-    banner_padding=16,
-)
+WECHAT_CONFIG = WechatConfig()

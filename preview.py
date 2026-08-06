@@ -2,6 +2,20 @@
 
 from PIL import Image, ImageDraw, ImageFont
 
+MACOS_FONT_CANDIDATES = (
+    "/System/Library/Fonts/PingFang.ttc",
+    "/System/Library/Fonts/STHeiti Medium.ttc",
+)
+
+
+def ui_font(size: int = 13) -> ImageFont.ImageFont | ImageFont.FreeTypeFont:
+    for path in MACOS_FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
 
 def make_preview(stickers: list[Image.Image]) -> Image.Image:
     thumb_size = (185, 160)
@@ -11,7 +25,7 @@ def make_preview(stickers: list[Image.Image]) -> Image.Image:
     height = gap + 4 * (thumb_size[1] + label_height + gap)
     preview = Image.new("RGBA", (width, height), (225, 229, 235, 255))
     draw = ImageDraw.Draw(preview)
-    font = ImageFont.load_default()
+    font = ui_font()
     for index, sticker in enumerate(stickers):
         row, col = divmod(index, 4)
         x = gap + col * (thumb_size[0] + gap)
@@ -26,15 +40,19 @@ def make_preview(stickers: list[Image.Image]) -> Image.Image:
 
 
 def make_wechat_preview(
-    stickers: list[Image.Image], banner: Image.Image | None, zip_contents: list[str]
+    stickers: list[Image.Image],
+    banner: Image.Image | None,
+    zip_contents: list[str],
+    validation_messages: list[str],
+    complete: bool,
 ) -> Image.Image:
-    """顯示 16 張貼圖、Banner 狀態及 ZIP 內容。"""
+    """顯示貼圖、Banner、ZIP 內容及微信素材完整性。"""
     grid = make_preview(stickers)
-    extra_height = 250
+    extra_height = 300
     result = Image.new("RGBA", (grid.width, grid.height + extra_height), (225, 229, 235, 255))
     result.alpha_composite(grid, (0, 0))
     draw = ImageDraw.Draw(result)
-    font = ImageFont.load_default()
+    font = ui_font()
     y = grid.height + 12
     draw.text((12, y), "WeChat Banner", fill=(20, 20, 20, 255), font=font)
     banner_box = (220, 120)
@@ -54,4 +72,10 @@ def make_wechat_preview(
         lines.append(f"... and {len(zip_contents) - 10} more")
     for offset, name in enumerate(lines, 1):
         draw.text((list_x, y + offset * 18), name, fill=(40, 40, 40, 255), font=font)
+    status_y = y + 170
+    status_color = (24, 120, 55, 255) if complete else (170, 65, 35, 255)
+    for offset, message in enumerate(validation_messages):
+        draw.text((12, status_y + offset * 18), message, fill=(35, 35, 35, 255), font=font)
+    final_message = "微信素材符合上傳規格。" if complete else "微信素材尚未完整，可能無法直接提交。"
+    draw.text((12, status_y + len(validation_messages) * 18 + 5), final_message, fill=status_color, font=font)
     return result

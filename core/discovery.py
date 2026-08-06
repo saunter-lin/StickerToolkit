@@ -60,6 +60,10 @@ def is_banner_ratio_candidate(path: Path) -> bool:
     return ratio_difference <= BANNER_RATIO_TOLERANCE
 
 
+def is_exact_banner_size(path: Path) -> bool:
+    return image_dimensions(path) == WECHAT_CONFIG.banner_size
+
+
 def all_image_candidates(folder: Path) -> list[Path]:
     return sorted(
         (
@@ -91,14 +95,26 @@ def ratio_banner_candidates(folder: Path, excluded: Path) -> list[Path]:
     return [
         path
         for path in all_image_candidates(folder)
-        if path != excluded and not is_known_banner_name(path) and is_banner_ratio_candidate(path)
+        if path != excluded
+        and not is_known_banner_name(path)
+        and not is_exact_banner_size(path)
+        and is_banner_ratio_candidate(path)
+    ]
+
+
+def exact_banner_size_candidates(folder: Path, excluded: Path) -> list[Path]:
+    return [
+        path
+        for path in all_image_candidates(folder)
+        if path != excluded and not is_known_banner_name(path) and is_exact_banner_size(path)
     ]
 
 
 def banner_candidates(folder: Path, excluded: Path) -> list[Path]:
     """回傳最高優先級候選：已知檔名優先，其次為比例。"""
     named = named_banner_candidates(folder, excluded)
-    return named or ratio_banner_candidates(folder, excluded)
+    exact = exact_banner_size_candidates(folder, excluded)
+    return named or exact or ratio_banner_candidates(folder, excluded)
 
 
 def choose_candidate(candidates: list[Path], interactive: bool, label: str = "貼圖合集") -> Path:

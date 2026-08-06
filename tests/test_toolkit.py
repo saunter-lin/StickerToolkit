@@ -13,6 +13,7 @@ from core.discovery import (
     BANNER_RATIO_TOLERANCE,
     banner_candidates,
     choose_candidate,
+    exact_banner_size_candidates,
     image_dimensions,
     is_banner_ratio_candidate,
     named_banner_candidates,
@@ -21,7 +22,7 @@ from core.discovery import (
 )
 from core.images import StickerError, build_shared_stickers, contain, load_image
 from exporters.line import export_line
-from exporters.wechat import export_wechat
+from exporters.wechat import export_wechat, validate_sticker_count
 from sticker_processor import choose_banner
 
 
@@ -89,29 +90,80 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(len(archive.namelist()), 18)
             self.assertIsNone(archive.testzip())
 
-    def test_wechat_export_without_banner(self) -> None:
-        zip_path, names, banner = export_wechat(self.stickers, self.output, None)
-        self.assertIsNone(banner)
-        self.assertNotIn("wechat/banner/banner.png", names)
-        self.assertEqual(len(names), 16)
-        with zipfile.ZipFile(zip_path) as archive:
-            self.assertEqual(len(archive.namelist()), 16)
+    def test_wechat_count_validation_accepts_sixteen(self) -> None:
+        validate_sticker_count(16)
+
+    def test_wechat_count_validation_rejects_below_eight(self) -> None:
+        with self.assertRaisesRegex(StickerError, "8～24"):
+            validate_sticker_count(7)
+
+    def test_wechat_count_validation_rejects_above_twenty_four(self) -> None:
+        with self.assertRaisesRegex(StickerError, "8～24"):
+            validate_sticker_count(25)
+
+    def test_wechat_export_without_banner_is_incomplete(self) -> None:
+        result = export_wechat(self.stickers, self.output, None)
+        self.assertIsNone(result.banner_path)
+        self.assertFalse(result.complete)
+        self.assertNotIn("wechat_sticker/banner.png", result.zip_contents)
+        self.assertEqual(len(result.zip_contents), 18)
+        with zipfile.ZipFile(result.zip_path) as archive:
+            self.assertEqual(len(archive.namelist()), 18)
             self.assertNotIn("wechat/manifest.json", archive.namelist())
             self.assertIsNone(archive.testzip())
 
-    def test_wechat_export_with_contained_banner(self) -> None:
+    def test_wechat_assets_match_dimensions_formats_and_limits(self) -> None:
         banner_path = self.output / "source_banner.png"
         Image.new("RGB", (1000, 200), "blue").save(banner_path)
-        zip_path, names, banner = export_wechat(self.stickers, self.output, banner_path)
-        self.assertIn("wechat/banner/banner.png", names)
-        self.assertEqual(len(names), 17)
-        self.assertIsNotNone(banner)
-        assert banner is not None
-        with Image.open(banner) as image:
-            self.assertEqual(image.size, WECHAT_CONFIG.banner_size)
-            self.assertEqual(image.mode, "RGBA")
-        with zipfile.ZipFile(zip_path) as archive:
+        result = export_wechat(self.stickers, self.output, banner_path, cover_index=3)
+        self.assertTrue(result.complete)
+        self.assertIn("wechat_sticker/banner.png", result.zip_contents)
+        self.assertEqual(len(result.zip_contents), 19)
+        for index in range(1, 17):
+            sticker = self.output / "wechat_sticker" / f"{index:02d}.png"
+            with Image.open(sticker) as image:
+                self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.sticker_size))
+            self.assertLessEqual(sticker.stat().st_size, WECHAT_CONFIG.sticker_max_bytes)
+        assert result.banner_path is not None
+        with Image.open(result.banner_path) as image:
+            self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.banner_size))
+        self.assertLessEqual(result.banner_path.stat().st_size, WECHAT_CONFIG.banner_max_bytes)
+        with Image.open(result.cover_path) as image:
+            self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.cover_size))
+        self.assertLessEqual(result.cover_path.stat().st_size, WECHAT_CONFIG.cover_max_bytes)
+        with Image.open(result.panel_icon_path) as image:
+            self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.panel_icon_size))
+        self.assertLessEqual(result.panel_icon_path.stat().st_size, WECHAT_CONFIG.panel_icon_max_bytes)
+        with zipfile.ZipFile(result.zip_path) as archive:
+            self.assertEqual(archive.namelist()[0], "wechat_sticker/01.png")
+            self.assertNotIn("wechat_sticker/manifest.json", archive.namelist())
             self.assertIsNone(archive.testzip())
+
+    def test_wechat_zip_is_not_duplicated(self) -> None:
+        old_zip = self.output / "wechat_sticker_package.zip"
+        old_zip.write_bytes(b"old")
+        result = export_wechat(self.stickers, self.output, None)
+        self.assertEqual(result.zip_path.name, "wechat_sticker.zip")
+        self.assertFalse(old_zip.exists())
+        self.assertEqual(list(self.output.glob("wechat*.zip")), [result.zip_path])
+
+    def test_wechat_config_matches_upload_specification(self) -> None:
+        self.assertEqual(
+            (
+                WECHAT_CONFIG.min_sticker_count,
+                WECHAT_CONFIG.max_sticker_count,
+                WECHAT_CONFIG.default_sticker_count,
+            ),
+            (8, 24, 16),
+        )
+        self.assertEqual(WECHAT_CONFIG.sticker_size, (240, 240))
+        self.assertEqual(WECHAT_CONFIG.sticker_max_bytes, 500 * 1024)
+        self.assertEqual(WECHAT_CONFIG.banner_size, (750, 400))
+        self.assertEqual(WECHAT_CONFIG.banner_max_bytes, 500 * 1024)
+        self.assertEqual(WECHAT_CONFIG.cover_size, (240, 240))
+        self.assertEqual(WECHAT_CONFIG.cover_max_bytes, 500 * 1024)
+        self.assertEqual(WECHAT_CONFIG.panel_icon_size, (50, 50))
+        self.assertEqual(WECHAT_CONFIG.panel_icon_max_bytes, 100 * 1024)
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -153,10 +205,11 @@ class DiscoveryTests(unittest.TestCase):
             exact = folder / "my_image.png"
             near = folder / "wechat01.png"
             Image.new("RGB", (800, 800), "white").save(source)
-            Image.new("RGB", (1500, 800), "red").save(exact)
+            Image.new("RGB", (750, 400), "red").save(exact)
             Image.new("RGB", (1967, 1000), "blue").save(near)
-            candidates = ratio_banner_candidates(folder, source)
-            self.assertEqual(set(candidates), {exact, near})
+            self.assertEqual(exact_banner_size_candidates(folder, source), [exact])
+            self.assertEqual(ratio_banner_candidates(folder, source), [near])
+            self.assertEqual(banner_candidates(folder, source), [exact])
             self.assertEqual(BANNER_RATIO_TOLERANCE, 0.05)
 
     def test_ratio_over_tolerance_is_not_detected(self) -> None:

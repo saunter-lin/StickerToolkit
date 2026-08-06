@@ -17,6 +17,27 @@ def save_rgba_png(image: Image.Image, path: Path) -> None:
         raise StickerError(f"無法寫入 PNG：{path.name}（{exc}）") from exc
 
 
+def save_optimized_png(image: Image.Image, path: Path, max_bytes: int, error_message: str) -> None:
+    """先做無損壓縮，超限時再以逐級色盤最佳化降低 PNG 大小。"""
+    rgba = image.convert("RGBA")
+    try:
+        rgba.save(path, "PNG", optimize=True, compress_level=9)
+        if path.stat().st_size <= max_bytes:
+            return
+        for colors in (256, 128, 64, 32):
+            optimized = rgba.quantize(
+                colors=colors,
+                method=Image.Quantize.FASTOCTREE,
+                dither=Image.Dither.FLOYDSTEINBERG,
+            )
+            optimized.save(path, "PNG", optimize=True, compress_level=9)
+            if path.stat().st_size <= max_bytes:
+                return
+    except OSError as exc:
+        raise StickerError(f"無法寫入 PNG：{path.name}（{exc}）") from exc
+    raise StickerError(error_message)
+
+
 def validate_png(path: Path, expected_size: tuple[int, int]) -> None:
     try:
         with Image.open(path) as image:
@@ -40,4 +61,3 @@ def write_zip(zip_path: Path, entries: list[tuple[Path, str]]) -> list[str]:
         return [archive_name for _, archive_name in entries]
     except (OSError, zipfile.BadZipFile) as exc:
         raise StickerError(f"ZIP 建立失敗：{zip_path.name}（{exc}）") from exc
-
