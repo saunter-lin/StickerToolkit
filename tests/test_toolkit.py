@@ -25,7 +25,11 @@ from core.images import StickerError, build_shared_stickers, contain, load_image
 from core.paths import ProjectPaths
 from exporters.line import export_line
 from exporters.wechat import export_wechat, validate_sticker_count
-from sticker_processor import choose_banner, process
+from sticker_processor import choose_banner
+from sticker_toolkit.core import InvalidGridError, InvalidSourceImageError, ProcessingOptions
+from sticker_toolkit.presets import LINE_PRESET, WECHAT_PRESET
+from sticker_toolkit.services import StickerService
+from sticker_toolkit.ui.cli.main import run_process
 
 
 def sample_sheet() -> Image.Image:
@@ -311,14 +315,14 @@ class SharedPipelineTests(unittest.TestCase):
             folder = Path(folder_name)
             source = folder / "sheet.png"
             sample_sheet().save(source)
-            with (
-                patch("sticker_processor.PROJECT_PATHS", ProjectPaths.from_root(folder)),
-                patch(
-                    "sticker_processor.build_shared_stickers",
-                    wraps=build_shared_stickers,
-                ) as shared_pipeline,
-            ):
-                process(source, None, "both", None, 1, 1, 1, False, False)
+            with patch(
+                "sticker_toolkit.services.sticker_service.build_shared_stickers",
+                wraps=build_shared_stickers,
+            ) as shared_pipeline:
+                StickerService().process(
+                    source,
+                    ProcessingOptions(platform="both", output_directory=folder / "output"),
+                )
             shared_pipeline.assert_called_once()
             self.assertTrue((folder / "output" / "preview" / "line" / "preview.png").is_file())
             self.assertTrue(
@@ -338,19 +342,23 @@ class SharedPipelineTests(unittest.TestCase):
             legacy_preview.mkdir()
             (legacy_preview / "old.png").write_bytes(b"old")
 
-            with patch("sticker_processor.PROJECT_PATHS", paths), patch(
-                "sticker_processor.ROOT", folder
-            ):
-                process(source, None, "both", None, 1, 1, 1, False, False)
-                wechat_preview = paths.preview.wechat_directory / WECHAT_CONFIG.preview_name
-                wechat_bytes = wechat_preview.read_bytes()
-                process(source, None, "line", None, 1, 1, 1, False, False)
-                self.assertEqual(wechat_preview.read_bytes(), wechat_bytes)
+            service = StickerService()
+            options = ProcessingOptions(platform="both", output_directory=paths.output.root)
+            service.process(source, options)
+            shutil.rmtree(legacy_preview)
+            wechat_preview = paths.preview.wechat_directory / WECHAT_CONFIG.preview_name
+            wechat_bytes = wechat_preview.read_bytes()
+            service.process(
+                source, ProcessingOptions(platform="line", output_directory=paths.output.root)
+            )
+            self.assertEqual(wechat_preview.read_bytes(), wechat_bytes)
 
-                line_preview = paths.preview.line_directory / LINE_CONFIG.preview_name
-                line_bytes = line_preview.read_bytes()
-                process(source, None, "wechat", None, 1, 1, 1, False, False)
-                self.assertEqual(line_preview.read_bytes(), line_bytes)
+            line_preview = paths.preview.line_directory / LINE_CONFIG.preview_name
+            line_bytes = line_preview.read_bytes()
+            service.process(
+                source, ProcessingOptions(platform="wechat", output_directory=paths.output.root)
+            )
+            self.assertEqual(line_preview.read_bytes(), line_bytes)
 
             self.assertFalse(legacy_preview.exists())
             self.assertTrue(paths.preview.root.is_relative_to(paths.output.root))
@@ -359,6 +367,115 @@ class SharedPipelineTests(unittest.TestCase):
             )
             shutil.rmtree(paths.output.root)
             self.assertFalse(paths.output.root.exists())
+
+
+class ServiceArchitectureTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.source = self.root / "sheet.png"
+        sample_sheet().save(self.source)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def test_presets_have_distinct_platform_paths_and_previews(self) -> None:
+        self.assertEqual(LINE_PRESET.output_folder_name, "line_sticker")
+        self.assertEqual(WECHAT_PRESET.output_folder_name, "wechat_sticker")
+        self.assertNotEqual(LINE_PRESET.preview_name, WECHAT_PRESET.preview_name)
+
+    def test_service_runs_without_callback_and_creates_missing_output(self) -> None:
+        output = self.root / "missing" / "output"
+        result = StickerService().process(
+            self.source, ProcessingOptions(platform="line", output_directory=output)
+        )
+        line = result.for_platform("line")
+        resolved_output = output.resolve()
+        self.assertEqual(line.output_directory, resolved_output / "line_sticker")
+        self.assertEqual(
+            line.preview_file, resolved_output / "preview" / "line" / "preview.png"
+        )
+        self.assertTrue(line.zip_file and line.zip_file.is_file())
+        self.assertFalse((self.root / "preview").exists())
+        self.assertFalse((self.root / "01.png").exists())
+
+    def test_service_reports_monotonic_zero_to_hundred_progress(self) -> None:
+        events: list[tuple[int, str]] = []
+        StickerService().process(
+            self.source,
+            ProcessingOptions(platform="both", output_directory=self.root / "output"),
+            lambda value, message: events.append((value, message)),
+        )
+        values = [value for value, _ in events]
+        self.assertEqual(values[0], 0)
+        self.assertEqual(values[-1], 100)
+        self.assertEqual(values, sorted(values))
+        self.assertTrue(all(0 <= value <= 100 and message for value, message in events))
+
+    def test_invalid_source_and_grid_raise_specific_errors(self) -> None:
+        with self.assertRaises(InvalidSourceImageError):
+            StickerService().process(
+                self.root / "missing.png",
+                ProcessingOptions(output_directory=self.root / "output"),
+            )
+        with self.assertRaises(InvalidGridError):
+            StickerService().process(
+                self.source,
+                ProcessingOptions(rows=2, columns=2, output_directory=self.root / "output"),
+            )
+
+    def test_preview_and_zip_can_be_disabled_without_root_output(self) -> None:
+        output = self.root / "output"
+        result = StickerService().process(
+            self.source,
+            ProcessingOptions(
+                platform="line",
+                output_directory=output,
+                create_preview=False,
+                create_zip=False,
+            ),
+        ).for_platform("line")
+        self.assertIsNone(result.preview_file)
+        self.assertIsNone(result.zip_file)
+        self.assertFalse((output / "preview" / "line").exists())
+        self.assertFalse((output / "line_sticker.zip").exists())
+
+    def test_cli_adapter_calls_sticker_service(self) -> None:
+        service = StickerService()
+        with patch(
+            "sticker_toolkit.ui.cli.main.StickerService.process",
+            wraps=service.process,
+        ) as process_call:
+            run_process(
+                self.source,
+                None,
+                "line",
+                None,
+                1,
+                1,
+                None,
+                False,
+                False,
+                self.root / "output",
+            )
+        process_call.assert_called_once()
+
+    def test_core_import_does_not_import_ui(self) -> None:
+        import subprocess
+        import sys
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import sys, sticker_toolkit.core; "
+                "assert not any(n.startswith('sticker_toolkit.ui') for n in sys.modules)",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
 
 
 if __name__ == "__main__":
