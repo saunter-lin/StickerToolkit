@@ -20,7 +20,7 @@ def main() -> int:
     application = QApplication(sys.argv) if existing is None else cast(QApplication, existing)
     application.setApplicationName("Sticker Toolkit")
     application.setOrganizationName("StickerToolkit")
-    icon_path = get_resource_path("assets/app_icon.png")
+    icon_path = get_resource_path("assets/app_icon_packaging.png")
     if icon_path.is_file():
         application.setWindowIcon(QIcon(str(icon_path)))
     window = MainWindow()

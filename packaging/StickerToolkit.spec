@@ -29,7 +29,7 @@ icon_path = (
     else project_root / "assets" / "icons" / "StickerToolkit.ico"
 )
 
-datas = [(str(project_root / "assets" / "app_icon.png"), "assets")]
+datas = [(str(project_root / "assets" / "app_icon_packaging.png"), "assets")]
 hiddenimports = ["PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets"]
 
 analysis = Analysis(
