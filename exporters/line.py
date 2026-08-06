@@ -7,9 +7,11 @@ from pathlib import Path
 from PIL import Image
 
 from core.config import LINE_CONFIG
-from core.images import contain
+from core.images import StickerError, contain
 
 from .common import save_rgba_png, validate_png, write_zip
+
+OLD_LINE_ZIP_NAMES = ("line_sticker_package.zip", "line_stickers.zip")
 
 
 def export_line(stickers: list[Image.Image], output_dir: Path, main_index: int, tab_index: int) -> Path:
@@ -30,7 +32,11 @@ def export_line(stickers: list[Image.Image], output_dir: Path, main_index: int, 
     validate_png(tab_path, LINE_CONFIG.tab_size)
     zip_path = output_dir / LINE_CONFIG.zip_name
     entries = [(path, path.name) for path in [*sticker_paths, main_path, tab_path]]
+    for old_name in OLD_LINE_ZIP_NAMES:
+        old_path = output_dir / old_name
+        try:
+            old_path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise StickerError(f"無法清除舊版 LINE ZIP：{old_name}（{exc}）") from exc
     write_zip(zip_path, entries)
-    # v1 相容：保留原始 ZIP 名稱，內容與正式 v1.2 套件相同。
-    write_zip(output_dir / "line_stickers.zip", entries)
     return zip_path

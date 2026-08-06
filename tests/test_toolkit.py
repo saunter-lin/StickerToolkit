@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import json
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image, ImageDraw
 
 from core.config import LINE_CONFIG, WECHAT_CONFIG
-from core.discovery import find_banner, sheet_candidates
+from core.discovery import banner_candidates, choose_candidate, sheet_candidates
 from core.images import StickerError, build_shared_stickers, contain, load_image
 from exporters.line import export_line
 from exporters.wechat import export_wechat
@@ -67,10 +67,14 @@ class ExporterTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def test_line_export_and_legacy_zip(self) -> None:
+    def test_line_export_has_only_one_zip(self) -> None:
+        (self.output / "line_sticker_package.zip").write_bytes(b"old")
+        (self.output / "line_stickers.zip").write_bytes(b"old")
         zip_path = export_line(self.stickers, self.output, 9, 3)
-        self.assertEqual(zip_path.name, "line_sticker_package.zip")
-        self.assertTrue((self.output / "line_stickers.zip").is_file())
+        self.assertEqual(zip_path.name, "line_sticker.zip")
+        self.assertFalse((self.output / "line_sticker_package.zip").exists())
+        self.assertFalse((self.output / "line_stickers.zip").exists())
+        self.assertEqual(list(self.output.glob("line*.zip")), [zip_path])
         with zipfile.ZipFile(zip_path) as archive:
             self.assertEqual(len(archive.namelist()), 18)
             self.assertIsNone(archive.testzip())
@@ -78,18 +82,19 @@ class ExporterTests(unittest.TestCase):
     def test_wechat_export_without_banner(self) -> None:
         zip_path, names, banner = export_wechat(self.stickers, self.output, None)
         self.assertIsNone(banner)
-        self.assertNotIn("wechat/banner/wechat_banner.png", names)
-        self.assertEqual(len(names), 17)
+        self.assertNotIn("wechat/banner/banner.png", names)
+        self.assertEqual(len(names), 16)
         with zipfile.ZipFile(zip_path) as archive:
-            manifest = json.loads(archive.read("wechat/manifest.json"))
-            self.assertIsNone(manifest["banner"])
-            self.assertEqual(manifest["sticker_count"], 16)
+            self.assertEqual(len(archive.namelist()), 16)
+            self.assertNotIn("wechat/manifest.json", archive.namelist())
+            self.assertIsNone(archive.testzip())
 
     def test_wechat_export_with_contained_banner(self) -> None:
         banner_path = self.output / "source_banner.png"
         Image.new("RGB", (1000, 200), "blue").save(banner_path)
         zip_path, names, banner = export_wechat(self.stickers, self.output, banner_path)
-        self.assertIn("wechat/banner/wechat_banner.png", names)
+        self.assertIn("wechat/banner/banner.png", names)
+        self.assertEqual(len(names), 17)
         self.assertIsNotNone(banner)
         assert banner is not None
         with Image.open(banner) as image:
@@ -100,13 +105,23 @@ class ExporterTests(unittest.TestCase):
 
 
 class DiscoveryTests(unittest.TestCase):
-    def test_banner_excluded_from_sheet_candidates(self) -> None:
+    def test_banner_detected_by_ratio_not_filename(self) -> None:
         with tempfile.TemporaryDirectory() as folder_name:
             folder = Path(folder_name)
-            Image.new("RGB", (10, 10), "white").save(folder / "Berry.png")
-            Image.new("RGB", (10, 10), "white").save(folder / "wechat_banner.png")
+            Image.new("RGB", (800, 800), "white").save(folder / "Berry.png")
+            Image.new("RGB", (750, 400), "white").save(folder / "my_image.png")
             self.assertEqual([path.name for path in sheet_candidates(folder)], ["Berry.png"])
-            self.assertEqual(find_banner(folder), folder / "wechat_banner.png")
+            self.assertEqual(banner_candidates(folder, folder / "Berry.png"), [folder / "my_image.png"])
+
+    def test_multiple_banners_can_be_selected(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            first = folder / "cover.png"
+            second = folder / "wechat01.png"
+            Image.new("RGB", (750, 400), "white").save(first)
+            Image.new("RGB", (900, 500), "white").save(second)
+            with patch("builtins.input", return_value="2"):
+                self.assertEqual(choose_candidate([first, second], True, "Banner"), second)
 
 
 if __name__ == "__main__":

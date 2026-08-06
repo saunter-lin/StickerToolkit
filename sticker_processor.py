@@ -65,10 +65,10 @@ def choose_banner(
             raise StickerError(f"找不到 WeChat Banner：{candidate}")
         return candidate
     if detected is not None:
-        print(f"自動偵測 WeChat Banner：{detected.name}")
+        print(f"依圖片規格自動偵測 WeChat Banner：{detected.name}")
         return detected
     if interactive:
-        answer = input("未偵測到 wechat_banner.png；可輸入 Banner 路徑，直接 Enter 略過：").strip()
+        answer = input("未偵測到符合比例的 Banner；可輸入 Banner 路徑，直接 Enter 略過：").strip()
         if answer:
             candidate = Path(answer).expanduser().resolve()
             if not candidate.is_file():
@@ -148,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=f"Multi Platform Sticker Toolkit v{VERSION}")
     parser.add_argument("path", nargs="?", type=Path, help="拖放的貼圖合集檔案或資料夾")
     parser.add_argument("--input", type=Path, help="指定貼圖合集檔案")
-    parser.add_argument("--banner", type=Path, help="手動指定 wechat_banner.png")
+    parser.add_argument("--banner", type=Path, help="手動指定任意檔名的 WeChat Banner PNG")
     parser.add_argument("--platform", choices=("line", "wechat", "both"), help="輸出平台；預設 LINE")
     parser.add_argument("--main", type=int, help="LINE main.png 使用的貼圖編號（1～16）")
     parser.add_argument("--tab", type=int, help="LINE tab.png 使用的貼圖編號（1～16）")

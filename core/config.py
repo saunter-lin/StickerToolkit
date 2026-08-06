@@ -24,7 +24,7 @@ LINE_CONFIG = PlatformConfig(
     name="LINE",
     sticker_size=(370, 320),
     sticker_padding=20,
-    zip_name="line_sticker_package.zip",
+    zip_name="line_sticker.zip",
     preview_name="preview.png",
     main_size=(240, 240),
     tab_size=(96, 74),
@@ -43,4 +43,3 @@ WECHAT_CONFIG = PlatformConfig(
     banner_size=(750, 400),
     banner_padding=16,
 )
-

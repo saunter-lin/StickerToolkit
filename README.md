@@ -9,7 +9,7 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 - 移除透明空白或與邊界相連的近白背景
 - 保持比例、透明背景、置中及安全留白
 - LINE：自選 `main.png`、`tab.png`，規格驗證、Preview 與 ZIP
-- WeChat：選用／自動偵測 `wechat_banner.png`、Preview、manifest 與 ZIP
+- WeChat：依圖片尺寸／比例自動偵測任意檔名 Banner、Preview 與 ZIP
 - 可選 LINE、WeChat 或兩者一起輸出
 - Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
 - 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
@@ -19,7 +19,7 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 ### 使用 input 資料夾
 
 1. 將貼圖合集放入 `input/`。
-2. 選用：將 Banner 命名為 `wechat_banner.png`，放在同一資料夾。
+2. 選用：將任意檔名的橫向 PNG Banner 放在同一資料夾。
 3. 雙擊 `build.command`。若 macOS 阻擋，請在 Finder 對檔案按右鍵並選擇「打開」。
 4. 選擇 LINE、WeChat 或同時輸出。
 5. LINE 模式會繼續詢問 main 與 tab 的貼圖編號；WeChat 模式若沒有 Banner，可輸入 Banner 路徑或直接略過。
@@ -34,10 +34,10 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 ```text
 MySticker/
 ├── Berry.png
-└── wechat_banner.png
+└── my_image.png
 ```
 
-工具會把 `wechat_banner.png` 識別為 Banner，其他 PNG/JPG 視為合集候選。若候選超過一張，互動模式會列出檔名讓使用者選擇。
+工具不依靠檔名判斷：近方形圖片優先視為 4×4 合集；剩餘 PNG 若寬高比接近 `WECHAT_CONFIG.banner_size`（目前允許目標比例 ±25%），即視為 Banner。若合集或 Banner 候選超過一張，互動模式會列出檔名與尺寸讓使用者選擇。
 
 ## 命令列使用方式
 
@@ -45,7 +45,7 @@ MySticker/
 python3 sticker_processor.py
 python3 sticker_processor.py /path/to/MySticker --interactive
 python3 sticker_processor.py --input /path/to/Berry.png --platform line --main 9 --tab 3
-python3 sticker_processor.py --input /path/to/Berry.png --platform wechat --banner /path/to/wechat_banner.png
+python3 sticker_processor.py --input /path/to/Berry.png --platform wechat --banner /path/to/any-name.png
 python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9 --tab 3
 ```
 
@@ -59,8 +59,7 @@ python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9
 - `main.png`：240×240 px RGBA PNG
 - `tab.png`：96×74 px RGBA PNG
 - `preview.png`：16 張貼圖檢查圖
-- `line_sticker_package.zip`：v1.2 正式 LINE 套件
-- `line_stickers.zip`：內容相同的 v1.1 相容檔名
+- `line_sticker.zip`：唯一的 LINE ZIP 套件，不產生重複副本
 
 ### WeChat
 
@@ -74,9 +73,10 @@ wechat/
 │   ├── ...
 │   └── 16.png
 ├── banner/
-│   └── wechat_banner.png   # 未提供 Banner 時省略
-└── manifest.json
+│   └── banner.png          # 未提供 Banner 時省略整個 banner/
 ```
+
+WeChat ZIP 不包含 `manifest.json` 或其他 JSON；未提供 Banner 時，ZIP 僅有 `wechat/stickers/01.png`～`16.png`。
 
 Banner 尺寸集中於 `core/config.py` 的 `WECHAT_CONFIG`。目前採用可調整的 750×400 contain 畫布，尚未宣稱為微信官方規格；發布到特定微信平台前請依最新官方文件確認，程式內保留 TODO。
 
@@ -93,7 +93,7 @@ Shared Sticker Images
 ```
 
 - `core/config.py`：`LINE_CONFIG`、`WECHAT_CONFIG` 與集中尺寸
-- `core/discovery.py`：檔案／資料夾輸入、候選合集與 Banner 偵測
+- `core/discovery.py`：檔案／資料夾輸入、圖片尺寸分析、合集與 Banner 候選選擇
 - `core/images.py`：共用圖片管線
 - `exporters/common.py`：共用 PNG 驗證與 ZIP 寫入
 - `exporters/line.py`：LINE exporter
