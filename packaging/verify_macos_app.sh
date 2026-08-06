@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 APP_PATH="$PROJECT_ROOT/dist/Sticker Toolkit.app"
 PLIST="$APP_PATH/Contents/Info.plist"
 BINARY="$APP_PATH/Contents/MacOS/Sticker Toolkit"
@@ -18,8 +19,9 @@ fail() {
 
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
 SHORT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
+EXPECTED_VERSION="$({ PYTHONPATH="$PROJECT_ROOT/src" "$PYTHON_BIN" -c 'from sticker_toolkit.version import __version__; print(__version__.split("-")[0])'; })"
 [[ "$BUNDLE_ID" == "com.saunterlin.stickertoolkit" ]] || fail "Bundle Identifier 不正確：$BUNDLE_ID"
-[[ "$SHORT_VERSION" == "1.3.0" ]] || fail "Bundle 版本不正確：$SHORT_VERSION"
+[[ "$SHORT_VERSION" == "$EXPECTED_VERSION" ]] || fail "Bundle 版本不正確：$SHORT_VERSION"
 /usr/bin/file "$BINARY" | grep -q "arm64" || fail "可執行檔不是 arm64。"
 
 if find "$APP_PATH/Contents" -type d \( -name tests -o -name .venv -o -name output -o -name __pycache__ \) | grep -q .; then
