@@ -9,8 +9,9 @@ from PIL import Image
 
 from core.config import WECHAT_CONFIG
 from core.images import StickerError, contain, load_image
+from core.paths import OutputPaths
 
-from .common import save_optimized_png, write_zip
+from .common import clean_directory, save_optimized_png, write_zip
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,7 @@ def _save_stickers(stickers: list[Image.Image], staging: Path) -> tuple[list[Pat
 
 def export_wechat(
     stickers: list[Image.Image],
-    output_dir: Path,
+    paths: OutputPaths,
     banner_path: Path | None,
     cover_index: int = 1,
 ) -> WechatExportResult:
@@ -71,8 +72,8 @@ def export_wechat(
     if not 1 <= cover_index <= len(stickers):
         raise StickerError(f"微信封面來源必須是 1～{len(stickers)}。")
 
-    staging = output_dir / "wechat_sticker"
-    staging.mkdir(parents=True, exist_ok=True)
+    staging = paths.wechat_directory
+    clean_directory(staging, "WeChat 輸出")
     sticker_paths, entries = _save_stickers(stickers, staging)
 
     cover_path = staging / "cover.png"
@@ -106,7 +107,7 @@ def export_wechat(
 
     for old_name in ("wechat_sticker_package.zip",):
         try:
-            (output_dir / old_name).unlink(missing_ok=True)
+            (paths.root / old_name).unlink(missing_ok=True)
         except OSError as exc:
             raise StickerError(f"無法清除舊版 WeChat ZIP：{old_name}（{exc}）") from exc
     try:
@@ -114,7 +115,7 @@ def export_wechat(
     except OSError as exc:
         raise StickerError(f"無法清除舊版 manifest.json（{exc}）") from exc
 
-    zip_path = output_dir / WECHAT_CONFIG.zip_name
+    zip_path = paths.wechat_zip
     names = write_zip(zip_path, entries)
     sticker_limit_kb = WECHAT_CONFIG.sticker_max_bytes // 1024
     banner_limit_kb = WECHAT_CONFIG.banner_max_bytes // 1024

@@ -21,6 +21,7 @@ from core.discovery import (
     resolve_source,
 )
 from core.images import StickerError, build_shared_stickers, contain, load_image
+from core.paths import ProjectPaths
 from exporters.line import export_line
 from exporters.wechat import export_wechat, validate_sticker_count
 from sticker_processor import choose_banner, process
@@ -70,7 +71,9 @@ class PipelineTests(unittest.TestCase):
 class ExporterTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
-        self.output = Path(self.temp.name)
+        self.paths = ProjectPaths.from_root(Path(self.temp.name))
+        self.output = self.paths.output.root
+        self.output.mkdir(parents=True)
         self.stickers = build_shared_stickers(
             sample_sheet(), LINE_CONFIG.sticker_size, LINE_CONFIG.sticker_padding
         )
@@ -81,13 +84,25 @@ class ExporterTests(unittest.TestCase):
     def test_line_export_has_only_one_zip(self) -> None:
         (self.output / "line_sticker_package.zip").write_bytes(b"old")
         (self.output / "line_stickers.zip").write_bytes(b"old")
-        zip_path = export_line(self.stickers, self.output, 9, 3)
+        zip_path = export_line(self.stickers, self.paths.output, 9, 3)
         self.assertEqual(zip_path.name, "line_sticker.zip")
         self.assertFalse((self.output / "line_sticker_package.zip").exists())
         self.assertFalse((self.output / "line_stickers.zip").exists())
         self.assertEqual(list(self.output.glob("line*.zip")), [zip_path])
+        self.assertFalse(any((self.output / f"{index:02d}.png").exists() for index in range(1, 17)))
+        self.assertFalse((self.output / "main.png").exists())
+        self.assertFalse((self.output / "tab.png").exists())
+        self.assertTrue(
+            all(
+                (self.paths.output.line_directory / f"{index:02d}.png").is_file()
+                for index in range(1, 17)
+            )
+        )
+        self.assertTrue((self.paths.output.line_directory / "main.png").is_file())
+        self.assertTrue((self.paths.output.line_directory / "tab.png").is_file())
         with zipfile.ZipFile(zip_path) as archive:
             self.assertEqual(len(archive.namelist()), 18)
+            self.assertTrue(all(name.startswith("line_sticker/") for name in archive.namelist()))
             self.assertIsNone(archive.testzip())
 
     def test_wechat_count_validation_accepts_sixteen(self) -> None:
@@ -102,7 +117,7 @@ class ExporterTests(unittest.TestCase):
             validate_sticker_count(25)
 
     def test_wechat_export_without_banner_is_incomplete(self) -> None:
-        result = export_wechat(self.stickers, self.output, None)
+        result = export_wechat(self.stickers, self.paths.output, None)
         self.assertIsNone(result.banner_path)
         self.assertFalse(result.complete)
         self.assertNotIn("banner.png", result.zip_contents)
@@ -115,7 +130,7 @@ class ExporterTests(unittest.TestCase):
     def test_wechat_assets_match_dimensions_formats_and_limits(self) -> None:
         banner_path = self.output / "source_banner.png"
         Image.new("RGB", (1000, 200), "blue").save(banner_path)
-        result = export_wechat(self.stickers, self.output, banner_path, cover_index=3)
+        result = export_wechat(self.stickers, self.paths.output, banner_path, cover_index=3)
         self.assertTrue(result.complete)
         self.assertIn("banner.png", result.zip_contents)
         self.assertEqual(len(result.zip_contents), 19)
@@ -152,10 +167,22 @@ class ExporterTests(unittest.TestCase):
     def test_wechat_zip_is_not_duplicated(self) -> None:
         old_zip = self.output / "wechat_sticker_package.zip"
         old_zip.write_bytes(b"old")
-        result = export_wechat(self.stickers, self.output, None)
+        result = export_wechat(self.stickers, self.paths.output, None)
         self.assertEqual(result.zip_path.name, "wechat_sticker.zip")
         self.assertFalse(old_zip.exists())
         self.assertEqual(list(self.output.glob("wechat*.zip")), [result.zip_path])
+
+    def test_platform_exports_do_not_delete_each_other(self) -> None:
+        wechat = export_wechat(self.stickers, self.paths.output, None)
+        wechat_bytes = wechat.zip_path.read_bytes()
+        export_line(self.stickers, self.paths.output, 1, 1)
+        self.assertTrue(self.paths.output.wechat_directory.is_dir())
+        self.assertEqual(wechat.zip_path.read_bytes(), wechat_bytes)
+
+        line_bytes = self.paths.output.line_zip.read_bytes()
+        export_wechat(self.stickers, self.paths.output, None)
+        self.assertTrue(self.paths.output.line_directory.is_dir())
+        self.assertEqual(self.paths.output.line_zip.read_bytes(), line_bytes)
 
     def test_wechat_config_matches_upload_specification(self) -> None:
         self.assertEqual(
@@ -284,7 +311,7 @@ class SharedPipelineTests(unittest.TestCase):
             source = folder / "sheet.png"
             sample_sheet().save(source)
             with (
-                patch("sticker_processor.OUTPUT_DIR", folder / "output"),
+                patch("sticker_processor.PROJECT_PATHS", ProjectPaths.from_root(folder)),
                 patch(
                     "sticker_processor.build_shared_stickers",
                     wraps=build_shared_stickers,
@@ -292,6 +319,10 @@ class SharedPipelineTests(unittest.TestCase):
             ):
                 process(source, None, "both", None, 1, 1, 1, False, False)
             shared_pipeline.assert_called_once()
+            self.assertTrue((folder / "preview" / "line" / "preview.png").is_file())
+            self.assertTrue((folder / "preview" / "wechat" / "wechat_preview.png").is_file())
+            self.assertFalse((folder / "preview" / "line" / "banner.png").exists())
+            self.assertFalse((folder / "preview" / "wechat" / "main.png").exists())
 
 
 if __name__ == "__main__":

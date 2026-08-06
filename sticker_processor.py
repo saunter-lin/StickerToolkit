@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sticker Toolkit v1.2.1 多平台貼圖匯出入口。"""
+"""Sticker Toolkit v1.2.2 多平台貼圖匯出入口。"""
 
 from __future__ import annotations
 
@@ -13,15 +13,16 @@ from PIL import Image
 from core.config import LINE_CONFIG, WECHAT_CONFIG
 from core.discovery import resolve_source
 from core.images import StickerError, build_shared_stickers, load_image
-from exporters.common import save_rgba_png
+from core.paths import ProjectPaths
+from exporters.common import clean_directory, save_rgba_png
 from exporters.line import export_line
 from exporters.wechat import export_wechat
-from preview import make_preview, make_wechat_preview
+from preview import make_line_preview, make_preview, make_wechat_preview
 
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / "input"
-OUTPUT_DIR = ROOT / "output"
+PROJECT_PATHS = ProjectPaths.from_root(ROOT)
 
 
 def choose_number(label: str, supplied: int | None, interactive: bool) -> int:
@@ -106,7 +107,7 @@ def process(
     interactive: bool,
     open_preview: bool,
 ) -> None:
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    PROJECT_PATHS.output.root.mkdir(exist_ok=True)
     platform = choose_platform(platform_option, interactive)
     use_line = platform in {"line", "both"}
     use_wechat = platform in {"wechat", "both"}
@@ -115,31 +116,63 @@ def process(
     print("執行共用管線：Split → Trim → Safe Margin（僅執行一次）")
     stickers = build_shared_stickers(source, LINE_CONFIG.sticker_size, LINE_CONFIG.sticker_padding)
 
-    line_preview = OUTPUT_DIR / LINE_CONFIG.preview_name
-    save_rgba_png(make_preview(stickers), line_preview)
-    print(f"16 張貼圖縮圖已建立：{line_preview}")
-    if open_preview:
-        open_on_macos(line_preview)
+    selection_preview = make_preview(stickers)
+    if use_line:
+        clean_directory(PROJECT_PATHS.preview.line_directory, "LINE Preview")
+        line_selection = PROJECT_PATHS.preview.line_directory / "selection.png"
+        save_rgba_png(selection_preview, line_selection)
+        print(f"LINE 選擇縮圖：{line_selection}")
+        if open_preview:
+            open_on_macos(line_selection)
+    if use_wechat:
+        clean_directory(PROJECT_PATHS.preview.wechat_directory, "WeChat Preview")
+        wechat_selection = PROJECT_PATHS.preview.wechat_directory / "selection.png"
+        save_rgba_png(selection_preview, wechat_selection)
+        print(f"WeChat 選擇縮圖：{wechat_selection}")
+        if open_preview:
+            open_on_macos(wechat_selection)
 
     exported: list[tuple[str, Path]] = []
     main_index = tab_index = 1
     if use_line:
         main_index = choose_number("main.png", main_choice, interactive)
         tab_index = choose_number("tab.png", tab_choice, interactive)
-        exported.append(("LINE", export_line(stickers, OUTPUT_DIR, main_index, tab_index)))
+        line_zip = export_line(stickers, PROJECT_PATHS.output, main_index, tab_index)
+        main_image = load_image(PROJECT_PATHS.output.line_directory / "main.png", "LINE main")
+        tab_image = load_image(PROJECT_PATHS.output.line_directory / "tab.png", "LINE tab")
+        line_messages = [
+            "LINE 貼圖：16 張，370×320 RGBA PNG",
+            "main.png：240×240 RGBA PNG",
+            "tab.png：96×74 RGBA PNG",
+            "LINE 素材驗證通過。",
+        ]
+        line_preview = PROJECT_PATHS.preview.line_directory / LINE_CONFIG.preview_name
+        save_rgba_png(make_line_preview(stickers, main_image, tab_image, line_messages), line_preview)
+        exported.append(("LINE", line_zip))
+        print(f"LINE Preview：{line_preview}")
+        try:
+            (PROJECT_PATHS.output.root / "preview.png").unlink(missing_ok=True)
+        except OSError as exc:
+            raise StickerError(f"無法清除舊版 LINE Preview（{exc}）") from exc
+        if open_preview:
+            open_on_macos(line_preview)
 
     if use_wechat:
         cover_index = choose_number("WeChat cover.png", wechat_cover_choice, interactive)
         banner_path = choose_banner(banner_option, detected_banner, interactive, True)
-        result = export_wechat(stickers, OUTPUT_DIR, banner_path, cover_index)
+        result = export_wechat(stickers, PROJECT_PATHS.output, banner_path, cover_index)
         prepared_banner: Image.Image | None = None
         if result.banner_path is not None:
             prepared_banner = load_image(result.banner_path, "已處理 Banner")
-        wechat_preview = OUTPUT_DIR / WECHAT_CONFIG.preview_name
+        cover_image = load_image(result.cover_path, "WeChat cover")
+        panel_icon = load_image(result.panel_icon_path, "WeChat panel icon")
+        wechat_preview = PROJECT_PATHS.preview.wechat_directory / WECHAT_CONFIG.preview_name
         save_rgba_png(
             make_wechat_preview(
                 stickers,
                 prepared_banner,
+                cover_image,
+                panel_icon,
                 result.zip_contents,
                 result.validation_messages,
                 result.complete,
@@ -148,6 +181,10 @@ def process(
         )
         exported.append(("WeChat", result.zip_path))
         print(f"WeChat Preview：{wechat_preview}")
+        try:
+            (PROJECT_PATHS.output.root / "wechat_preview.png").unlink(missing_ok=True)
+        except OSError as exc:
+            raise StickerError(f"無法清除舊版 WeChat Preview（{exc}）") from exc
         for message in result.validation_messages:
             print(message)
         if result.complete:
@@ -170,7 +207,7 @@ def process(
         print(f"{label} ZIP：\n{zip_path.name}")
     print("====================================")
     if open_preview:
-        open_on_macos(OUTPUT_DIR)
+        open_on_macos(PROJECT_PATHS.output.root)
 
 
 def build_parser() -> argparse.ArgumentParser:

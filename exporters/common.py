@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+import shutil
 import zipfile
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 
 from core.images import StickerError
+
+
+def clean_directory(path: Path, label: str) -> None:
+    try:
+        if path.exists():
+            shutil.rmtree(path)
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise StickerError(f"無法清理{label}目錄：{path}（{exc}）") from exc
 
 
 def save_rgba_png(image: Image.Image, path: Path) -> None:

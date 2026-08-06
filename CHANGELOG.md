@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.2
+
+### Fixed
+
+- LINE 素材改為輸出至獨立的 `output/line_sticker/`。
+- LINE ZIP 使用 `line_sticker/` 內部資料夾，且仍只產生一份 ZIP。
+- Preview 改為 `preview/line/` 與 `preview/wechat/` 分平台保存。
+- 平台重新輸出只清理自己的正式素材與 Preview，不再互相覆蓋或混放。
+
 ## v1.2.1
 
 ### Fixed

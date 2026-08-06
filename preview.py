@@ -39,16 +39,46 @@ def make_preview(stickers: list[Image.Image]) -> Image.Image:
     return preview
 
 
+def make_line_preview(
+    stickers: list[Image.Image],
+    main_image: Image.Image,
+    tab_image: Image.Image,
+    validation_messages: list[str],
+) -> Image.Image:
+    grid = make_preview(stickers)
+    result = Image.new("RGBA", (grid.width, grid.height + 210), (225, 229, 235, 255))
+    result.alpha_composite(grid, (0, 0))
+    draw = ImageDraw.Draw(result)
+    font = ui_font()
+    y = grid.height + 12
+    draw.text((12, y), "LINE Preview", fill=(20, 20, 20, 255), font=font)
+    for image, label, x, box in (
+        (main_image, "main.png", 12, (130, 130)),
+        (tab_image, "tab.png", 165, (130, 100)),
+    ):
+        tile = Image.new("RGBA", box, "white")
+        small = image.copy()
+        small.thumbnail(box, Image.Resampling.LANCZOS)
+        tile.alpha_composite(small, ((box[0] - small.width) // 2, (box[1] - small.height) // 2))
+        result.alpha_composite(tile, (x, y + 24))
+        draw.text((x, y + 28 + box[1]), label, fill=(35, 35, 35, 255), font=font)
+    for offset, message in enumerate(validation_messages):
+        draw.text((330, y + 28 + offset * 22), message, fill=(35, 35, 35, 255), font=font)
+    return result
+
+
 def make_wechat_preview(
     stickers: list[Image.Image],
     banner: Image.Image | None,
+    cover: Image.Image,
+    panel_icon: Image.Image,
     zip_contents: list[str],
     validation_messages: list[str],
     complete: bool,
 ) -> Image.Image:
     """顯示貼圖、Banner、ZIP 內容及微信素材完整性。"""
     grid = make_preview(stickers)
-    extra_height = 540
+    extra_height = 600
     result = Image.new("RGBA", (grid.width, grid.height + extra_height), (225, 229, 235, 255))
     result.alpha_composite(grid, (0, 0))
     draw = ImageDraw.Draw(result)
@@ -65,6 +95,16 @@ def make_wechat_preview(
     else:
         ImageDraw.Draw(tile).text((58, 52), "No Banner", fill=(130, 50, 50, 255), font=font)
     result.alpha_composite(tile, (banner_x, banner_y))
+    for image, label, x, box in (
+        (cover, "cover.png", 12, (90, 90)),
+        (panel_icon, "panel_icon.png", 125, (90, 90)),
+    ):
+        asset_tile = Image.new("RGBA", box, "white")
+        small = image.copy()
+        small.thumbnail(box, Image.Resampling.LANCZOS)
+        asset_tile.alpha_composite(small, ((box[0] - small.width) // 2, (box[1] - small.height) // 2))
+        result.alpha_composite(asset_tile, (x, y + 155))
+        draw.text((x, y + 250), label, fill=(35, 35, 35, 255), font=font)
     list_x = 255
     draw.text((list_x, y), f"ZIP Contents ({len(zip_contents)})", fill=(20, 20, 20, 255), font=font)
     lines = zip_contents[:10]
@@ -72,7 +112,7 @@ def make_wechat_preview(
         lines.append(f"... and {len(zip_contents) - 10} more")
     for offset, name in enumerate(lines, 1):
         draw.text((list_x, y + offset * 18), name, fill=(40, 40, 40, 255), font=font)
-    status_y = y + 235
+    status_y = y + 285
     status_color = (24, 120, 55, 255) if complete else (170, 65, 35, 255)
     for offset, message in enumerate(validation_messages):
         draw.text((12, status_y + offset * 18), message, fill=(35, 35, 35, 255), font=font)

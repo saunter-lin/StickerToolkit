@@ -1,4 +1,4 @@
-# Multi Platform Sticker Toolkit v1.2.1（macOS）
+# Multi Platform Sticker Toolkit v1.2.2（macOS）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
@@ -62,15 +62,15 @@ python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9
 
 ### LINE
 
-- `01.png`～`16.png`：370×320 px RGBA PNG
-- `main.png`：240×240 px RGBA PNG
-- `tab.png`：96×74 px RGBA PNG
-- `preview.png`：16 張貼圖檢查圖
+- `line_sticker/01.png`～`16.png`：370×320 px RGBA PNG
+- `line_sticker/main.png`：240×240 px RGBA PNG
+- `line_sticker/tab.png`：96×74 px RGBA PNG
+- `preview/line/preview.png`：LINE 專屬總覽，包含 16 張、main、tab 與驗證
 - `line_sticker.zip`：唯一的 LINE ZIP 套件，不產生重複副本
 
 ### WeChat
 
-- `wechat_preview.png`：顯示貼圖、Banner、ZIP 內容與四類素材驗證結果
+- `preview/wechat/wechat_preview.png`：WeChat 專屬總覽，顯示貼圖、Banner、cover、panel icon、ZIP 內容與驗證結果
 - `wechat_sticker.zip`：唯一的 WeChat ZIP，結構如下：
 
 ```text
@@ -84,6 +84,26 @@ wechat_sticker.zip
 ```
 
 WeChat ZIP 不包含 `manifest.json` 或其他 JSON。貼圖數量驗證接受 8～24 張；目前 4×4 UI 仍預設產生 16 張。若缺少 Banner，仍會匯出貼圖、cover 與 panel icon 供檢查，但 Preview 會顯示「微信素材尚未完整，可能無法直接提交。」
+
+### 輸出與 Preview 目錄
+
+```text
+output/
+├── line_sticker/
+├── wechat_sticker/
+├── line_sticker.zip
+└── wechat_sticker.zip
+
+preview/
+├── line/
+│   ├── selection.png
+│   └── preview.png
+└── wechat/
+    ├── selection.png
+    └── wechat_preview.png
+```
+
+重新輸出 LINE 只會重建 `output/line_sticker/`、`line_sticker.zip` 與 `preview/line/`；重新輸出 WeChat 同理，不會刪除另一平台的結果。
 
 ### WeChat 素材最佳化
 
@@ -102,6 +122,7 @@ Shared Sticker Images
 ```
 
 - `core/config.py`：`LINE_CONFIG`、`WECHAT_CONFIG` 與集中尺寸
+- `core/paths.py`：集中管理 output、平台素材、ZIP 與 Preview 路徑
 - `core/discovery.py`：檔案／資料夾輸入、圖片尺寸分析、合集與 Banner 候選選擇
 - `core/images.py`：共用圖片管線
 - `exporters/common.py`：共用 PNG 驗證與 ZIP 寫入
@@ -137,7 +158,7 @@ mypy sticker_processor.py core exporters
 
 ## 版本資訊
 
-目前版本：`v1.2.1`
+目前版本：`v1.2.2`
 
 詳見 [CHANGELOG.md](CHANGELOG.md)。
 
