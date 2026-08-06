@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, QThread, Slot
@@ -52,7 +53,15 @@ class MainWindow(QMainWindow):
     def __init__(self, controller: StickerController | None = None) -> None:
         super().__init__()
         self.controller = controller or StickerController()
-        self.settings = QSettings("StickerToolkit", "StickerToolkit")
+        if sys.platform == "win32":
+            self.settings = QSettings(
+                QSettings.Format.IniFormat,
+                QSettings.Scope.UserScope,
+                "StickerToolkit",
+                "StickerToolkit",
+            )
+        else:
+            self.settings = QSettings("StickerToolkit", "StickerToolkit")
         self._thread: QThread | None = None
         self._worker: StickerWorker | None = None
         self._last_result: ProcessingResult | None = None
@@ -233,6 +242,7 @@ class MainWindow(QMainWindow):
             self._output_user_selected = True
             self.settings.setValue("output_directory_mode", "manual")
             self.settings.setValue("last_manual_output_directory", path)
+            self.settings.sync()
             self._refresh_start_enabled()
 
     @Slot()
@@ -351,4 +361,5 @@ class MainWindow(QMainWindow):
             return
         self.settings.setValue("platform", self.platform_combo.currentData())
         self.settings.setValue("window_geometry", self.saveGeometry())
+        self.settings.sync()
         super().closeEvent(event)

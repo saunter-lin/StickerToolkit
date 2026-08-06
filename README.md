@@ -47,7 +47,7 @@ PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
 
 Windows Log 預設位於 `%LOCALAPPDATA%/StickerToolkit/Logs/`。應用資源一律透過 `get_resource_path()` 取得，兼容原始碼與 PyInstaller frozen 模式。
 
-目前 Repository 尚未納入正式 GUI 截圖；畫面會在正式 Release 視覺確認後補上，避免以開發中介面冒充正式發布畫面。
+Repository 已提供 v1.3.0 Desktop GUI 截圖；實際外觀會依作業系統字型與 Qt 主題略有差異。
 
 ### macOS 封裝版（v1.3.0）
 
@@ -59,7 +59,7 @@ StickerToolkit-v<version>-macOS-<arch>.dmg
 
 開啟 DMG 後，將 `Sticker Toolkit.app` 拖到 `Applications` 捷徑，再從「應用程式」啟動。App 目前是 unsigned／未公證測試建置；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。專案不會宣稱已完成 Apple Developer 簽章或 notarization。
 
-Windows 封裝設定與 `.ico` 已備妥，但正式 EXE 必須在原生 Windows 10／11 環境建置與驗證；目前沒有可發布的 Windows 產物。
+Windows x64 onedir 已在原生 Windows 10 完成建置、LINE／WeChat 處理、中文與空白路徑及啟動驗證。請下載完整 Windows ZIP 並整包解壓，不要單獨執行或散布其中的 EXE。
 
 封裝使用 `assets/app_icon_packaging.png`：外角透明、移除底部標題與副標題，保留貼圖格、魔法棒、星光與聊天氣泡。原始品牌圖仍保存在 `assets/app_icon.png`，不會被封裝流程覆蓋。
 
@@ -176,7 +176,7 @@ Filesystem outputs
 - `sticker_processor.py`：舊版命令的薄相容入口，不再保存圖片處理流程
 - `cover.py`、`exporter.py`：v1.1 程式介面的相容層
 
-Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面 worker 使用 Qt signal 將進度、結果與錯誤送回主執行緒。macOS arm64 PyInstaller／DMG 測試封裝已完成；Windows 正式產物仍待原生環境驗證。
+Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面 worker 使用 Qt signal 將進度、結果與錯誤送回主執行緒。macOS arm64 DMG 與 Windows x64 onedir 均已完成原生環境建置及功能驗證。
 
 ### 新套件入口
 
@@ -240,13 +240,13 @@ packaging/verify_macos_app.sh
 PYTHON_BIN=.venv/bin/python packaging/create_dmg.sh
 ```
 
-Windows 請在原生 Windows PowerShell 執行：
+Windows 已在原生 Windows x64 環境驗證。建議使用可重複建立 `.venv-win`、版本化 onedir 與 ZIP 的腳本：
 
 ```powershell
-packaging\build_windows.ps1 -Python .venv\Scripts\python
+powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:\path\to\python.exe"
 ```
 
-詳細需求、產物位置與 Windows 驗證項目請參閱 [packaging/README.md](packaging/README.md) 與 [Windows 原生驗證清單](packaging/WINDOWS_TEST_CHECKLIST.md)。`build/`、`dist/`、DMG、Log、cache 與測試產物皆不納入 Git。
+詳細需求與實機驗證方式請參閱 [Windows x64 建置說明](docs/WINDOWS_BUILD.md)、[packaging/README.md](packaging/README.md) 與 [Windows 原生驗證清單](packaging/WINDOWS_TEST_CHECKLIST.md)。`build/`、`dist/`、`release/`、DMG、Log、cache 與測試產物皆不納入 Git。
 
 ## 已知限制
 
@@ -255,7 +255,7 @@ packaging\build_windows.ps1 -Python .venv\Scripts\python
 - `tab.png` 不使用角色臉部辨識模型，只會緊密裁切並放大完整主體。
 - 首次安裝 Pillow 時需要網路，且 macOS 必須已有 Python 3。
 - macOS 測試封裝目前僅驗證 Apple Silicon `arm64`，且未簽章、未公證。
-- Windows EXE 尚待原生 Windows 環境建置、完整 smoke test 與防毒誤報檢查。
+- Windows 套件尚未簽章，可能出現 SmartScreen 或防毒誤報；必須保留完整 onedir 結構。
 
 ## 版本資訊
 
@@ -267,7 +267,7 @@ packaging\build_windows.ps1 -Python .venv\Scripts\python
 
 - 支援其他列數與欄數的合集圖
 - 完成 Developer ID 簽章、公證與 Gatekeeper 發行驗證
-- 在原生 Windows 環境完成 EXE 建置、測試與發行格式選擇
+- 評估 Windows code signing、SmartScreen reputation 與 onefile 發行格式
 - 評估 Intel／Universal macOS 建置需求
 - 提供裁切與安全留白即時調整
 - 加入更多平台 exporter 與批次處理

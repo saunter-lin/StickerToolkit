@@ -21,15 +21,15 @@ PYTHON_BIN=.venv/bin/python packaging/create_dmg.sh
 
 ## Windows
 
-請只在原生 Windows PowerShell 執行：
+原生 Windows x64 已驗證的建置入口為：
 
 ```powershell
 py -m venv .venv
 .venv\Scripts\python -m pip install -e ".[desktop,build]"
-packaging\build_windows.ps1 -Python .venv\Scripts\python
+powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:\path\to\python.exe"
 ```
 
-預期 onedir 產物位於 `dist/Sticker Toolkit/`。Windows 正式建置與測試仍須完成 [原生驗證清單](WINDOWS_TEST_CHECKLIST.md)，macOS 不會產生或發布未驗證的 EXE。
+專用 spec 位於 `packaging/windows/sticker_toolkit_windows.spec`，版本化 onedir 與 ZIP 位於 `release/windows/`。既有 `packaging/build_windows.ps1` 與跨平台 spec 保留作為簡易／相容建置入口。詳見 [Windows x64 建置說明](../docs/WINDOWS_BUILD.md) 與 [原生驗證清單](WINDOWS_TEST_CHECKLIST.md)。
 
 ## 封裝範圍
 

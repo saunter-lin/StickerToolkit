@@ -15,6 +15,7 @@
 - 新增跨平台 App Icon 資源、PyInstaller `.spec` 與版本共用的封裝設定。
 - 新增 macOS App／DMG 建置及 Bundle 驗證腳本，DMG 內含 Applications 捷徑與 SHA-256。
 - 新增原生 Windows PowerShell 建置腳本與 Windows smoke-test 清單。
+- 新增經 Windows 10 x64 原生環境驗證的 Windows onedir ZIP，包含 Qt、Pillow、圖示與 Python runtime。
 
 ### Changed
 
@@ -27,8 +28,7 @@
 
 ### Pending
 
-- 在原生 Windows 環境完成 EXE 建置、中文路徑、防毒誤報及完整流程驗證。
-- 評估 Apple Developer 簽章與公證需求。
+- 評估 Apple Developer 簽章、公證，以及 Windows code signing／SmartScreen reputation。
 
 ## [v1.2.3] — 2026-08-06
 

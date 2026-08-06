@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 from sticker_toolkit.core import ProcessingOptions, ProcessingResult
 from sticker_toolkit.services import StickerService
+from sticker_toolkit.ui.desktop import app as desktop_app
 from sticker_toolkit.ui.desktop.controllers import StickerController
 from sticker_toolkit.ui.desktop.main_window import MainWindow
 from sticker_toolkit.ui.desktop.output_paths import suggested_output_directory
@@ -228,6 +229,26 @@ class MainWindowStateTests(unittest.TestCase):
     def test_start_disabled_without_source(self) -> None:
         self.assertFalse(self.window.start_button.isEnabled())
         self.assertEqual(self.window.output_edit.text(), "")
+
+    def test_windows_uses_user_scope_ini_settings(self) -> None:
+        with patch("sticker_toolkit.ui.desktop.main_window.sys.platform", "win32"):
+            windows_window = MainWindow()
+        try:
+            self.assertEqual(windows_window.settings.format(), QSettings.Format.IniFormat)
+        finally:
+            with patch.object(QMessageBox, "information"):
+                windows_window.close()
+
+    def test_unhandled_exception_is_logged_and_shown(self) -> None:
+        error = RuntimeError("boom")
+        with (
+            patch.object(desktop_app.logger, "critical") as critical,
+            patch.object(QMessageBox, "critical") as message,
+        ):
+            desktop_app._show_unhandled_exception(RuntimeError, error, None)
+        critical.assert_called_once()
+        message.assert_called_once()
+        self.assertIn("RuntimeError: boom", message.call_args.args[2])
 
     def test_automatic_output_updates_with_each_source(self) -> None:
         first = Path(self.test_temp.name) / "berry.png"
