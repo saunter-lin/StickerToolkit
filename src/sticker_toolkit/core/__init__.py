@@ -10,13 +10,20 @@ from .exceptions import (
 )
 from .image_processor import build_shared_stickers, contain, crop_visible, remove_edge_background
 from .loader import load_image
-from .models import PlatformProcessingResult, ProcessingOptions, ProcessingResult, ProgressCallback
+from .models import (
+    OptionsCallback,
+    PlatformProcessingResult,
+    ProcessingOptions,
+    ProcessingResult,
+    ProgressCallback,
+)
 from .sheet_splitter import split_grid
 
 __all__ = [
     "ExportError",
     "InvalidGridError",
     "InvalidSourceImageError",
+    "OptionsCallback",
     "PlatformProcessingResult",
     "ProcessingError",
     "ProcessingOptions",

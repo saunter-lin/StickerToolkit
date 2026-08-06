@@ -412,6 +412,26 @@ class ServiceArchitectureTests(unittest.TestCase):
         self.assertEqual(values, sorted(values))
         self.assertTrue(all(0 <= value <= 100 and message for value, message in events))
 
+    def test_options_callback_receives_selection_preview_after_single_split(self) -> None:
+        received: list[Path] = []
+
+        def select(options: ProcessingOptions, previews: tuple[Path, ...]) -> ProcessingOptions:
+            received.extend(previews)
+            self.assertTrue(all(path.is_file() for path in previews))
+            return options
+
+        with patch(
+            "sticker_toolkit.services.sticker_service.build_shared_stickers",
+            wraps=build_shared_stickers,
+        ) as shared_pipeline:
+            StickerService().process(
+                self.source,
+                ProcessingOptions(platform="both", output_directory=self.root / "output"),
+                options_callback=select,
+            )
+        self.assertEqual(len(received), 2)
+        shared_pipeline.assert_called_once()
+
     def test_invalid_source_and_grid_raise_specific_errors(self) -> None:
         with self.assertRaises(InvalidSourceImageError):
             StickerService().process(

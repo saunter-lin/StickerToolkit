@@ -17,6 +17,7 @@ from sticker_toolkit.core.exceptions import (
 from sticker_toolkit.core.image_processor import build_shared_stickers
 from sticker_toolkit.core.loader import load_image
 from sticker_toolkit.core.models import (
+    OptionsCallback,
     PlatformProcessingResult,
     ProcessingOptions,
     ProcessingResult,
@@ -44,6 +45,7 @@ class StickerService:
         source_path: Path,
         options: ProcessingOptions,
         progress_callback: ProgressCallback | None = None,
+        options_callback: OptionsCallback | None = None,
     ) -> ProcessingResult:
         if options.platform not in {"line", "wechat", "both"}:
             raise StickerToolkitError(f"不支援的輸出平台：{options.platform}")
@@ -53,9 +55,6 @@ class StickerService:
             raise StickerToolkitError("v1.3 第一階段仍固定啟用 Trim。")
         if options.padding_ratio is not None:
             raise StickerToolkitError("v1.3 第一階段尚未開放自訂 padding_ratio。")
-        selected_indices = [options.main_index, options.tab_index, options.wechat_cover_index]
-        if any(index < 1 or index > 16 for index in selected_indices):
-            raise StickerToolkitError("貼圖來源編號必須是 1～16。")
         source_path = source_path.expanduser().resolve()
         if not source_path.is_file():
             raise InvalidSourceImageError(f"找不到貼圖合集：{source_path}")
@@ -81,12 +80,22 @@ class StickerService:
             paths = ProjectPaths.from_output(options.output_directory.expanduser().resolve())
             paths.output.root.mkdir(parents=True, exist_ok=True)
             results: list[PlatformProcessingResult] = []
+            selection_files: list[Path] = []
+            if options.create_preview and options.platform in {"line", "both"}:
+                create_selection_preview(stickers, paths.preview.line_directory)
+                selection_files.append(paths.preview.line_directory / "selection.png")
+            if options.create_preview and options.platform in {"wechat", "both"}:
+                create_selection_preview(stickers, paths.preview.wechat_directory)
+                selection_files.append(paths.preview.wechat_directory / "selection.png")
+            if options_callback is not None:
+                options = options_callback(options, tuple(selection_files))
+            selected_indices = [options.main_index, options.tab_index, options.wechat_cover_index]
+            if any(index < 1 or index > 16 for index in selected_indices):
+                raise StickerToolkitError("貼圖來源編號必須是 1～16。")
 
             if options.platform in {"line", "both"}:
                 self._report(progress_callback, 55, "正在產生 LINE 素材")
-                if options.create_preview:
-                    create_selection_preview(stickers, paths.preview.line_directory)
-                else:
+                if not options.create_preview:
                     remove_directory(paths.preview.line_directory, "LINE Preview")
                 line_result = export_line_result(stickers, paths.output, options)
                 if options.create_preview:
@@ -96,9 +105,7 @@ class StickerService:
 
             if options.platform in {"wechat", "both"}:
                 self._report(progress_callback, 80, "正在產生 WeChat 素材")
-                if options.create_preview:
-                    create_selection_preview(stickers, paths.preview.wechat_directory)
-                else:
+                if not options.create_preview:
                     remove_directory(paths.preview.wechat_directory, "WeChat Preview")
                 wechat_result, exported = export_wechat_result(stickers, paths.output, options)
                 if options.create_preview:

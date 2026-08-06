@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 from core.discovery import resolve_source
@@ -132,18 +133,41 @@ def run_process(
     options = ProcessingOptions(
         platform=platform,
         output_directory=output_directory,
-        main_index=choose_number("main.png", main_choice, interactive) if use_line else 1,
-        tab_index=choose_number("tab.png", tab_choice, interactive) if use_line else 1,
+        main_index=choose_number("main.png", main_choice, False) if use_line else 1,
+        tab_index=choose_number("tab.png", tab_choice, False) if use_line else 1,
         wechat_cover_index=(
-            choose_number("WeChat cover.png", wechat_cover_choice, interactive)
+            choose_number("WeChat cover.png", wechat_cover_choice, False)
             if use_wechat
             else 1
         ),
         banner_path=banner,
     )
+
+    def select_after_preview(
+        current: ProcessingOptions, selection_files: tuple[Path, ...]
+    ) -> ProcessingOptions:
+        if open_preview:
+            for preview_file in selection_files:
+                open_on_macos(preview_file)
+        return replace(
+            current,
+            main_index=(choose_number("main.png", main_choice, True) if use_line else 1),
+            tab_index=(choose_number("tab.png", tab_choice, True) if use_line else 1),
+            wechat_cover_index=(
+                choose_number("WeChat cover.png", wechat_cover_choice, True)
+                if use_wechat
+                else 1
+            ),
+        )
+
     if output_directory.name == "output":
         remove_directory(output_directory.parent / "preview", "舊版 Preview")
-    result = StickerService().process(source_path, options, console_progress)
+    result = StickerService().process(
+        source_path,
+        options,
+        console_progress,
+        select_after_preview if interactive else None,
+    )
     display_result(result, options)
     if open_preview:
         for platform_result in result.platforms:

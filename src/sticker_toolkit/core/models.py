@@ -25,6 +25,9 @@ class ProcessingOptions:
     banner_path: Path | None = None
 
 
+OptionsCallback = Callable[[ProcessingOptions, tuple[Path, ...]], ProcessingOptions]
+
+
 @dataclass(frozen=True)
 class PlatformProcessingResult:
     platform: str
