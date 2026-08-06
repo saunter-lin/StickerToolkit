@@ -1,4 +1,4 @@
-# Multi Platform Sticker Toolkit v1.2.3（macOS）
+# Multi Platform Sticker Toolkit v1.3.0-dev（macOS）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
@@ -111,24 +111,46 @@ output/
 ## 架構
 
 ```text
-Sticker Sheet
-    ↓
-core/images.py：Split → Trim → Safe Margin（一次）
-    ↓
-Shared Sticker Images
-    ├── exporters/line.py
-    └── exporters/wechat.py
+UI / CLI
+   ↓
+StickerService
+   ↓
+Core image-processing modules
+   ↓
+Filesystem outputs
 ```
 
-- `core/config.py`：`LINE_CONFIG`、`WECHAT_CONFIG` 與集中尺寸
-- `core/paths.py`：集中管理 output、平台素材、ZIP 與 Preview 路徑
-- `core/discovery.py`：檔案／資料夾輸入、圖片尺寸分析、合集與 Banner 候選選擇
-- `core/images.py`：共用圖片管線
-- `exporters/common.py`：共用 PNG 驗證與 ZIP 寫入
-- `exporters/line.py`：LINE exporter
-- `exporters/wechat.py`：WeChat exporter
-- `sticker_processor.py`：維持原本終端流程的控制器
+- `src/sticker_toolkit/core/`：純 Python 圖片載入、切割、處理、輸出 facade、資料模型與例外；不依賴 UI
+- `src/sticker_toolkit/services/`：唯一的流程協調入口 `StickerService`
+- `src/sticker_toolkit/presets/`：LINE 與 WeChat 平台差異及驗證範圍
+- `src/sticker_toolkit/ui/cli/`：命令列參數、互動、進度與結果顯示 adapter
+- `src/sticker_toolkit/ui/desktop/`：桌面入口、控制器及背景 worker 骨架
+- `core/`、`exporters/`：保留 v1.2 已驗證的演算法／輸出實作，透過新 Core API 漸進遷移
+- `sticker_processor.py`：舊版命令的薄相容入口，不再保存圖片處理流程
 - `cover.py`、`exporter.py`：v1.1 程式介面的相容層
+
+Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與後續桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面封裝與完整 UI 將在 v1.3 後續階段完成。
+
+### 新套件入口
+
+```bash
+PYTHONPATH=src python3 -m sticker_toolkit.ui.cli --input input/example.png --platform line
+PYTHONPATH=src python3 -m sticker_toolkit.ui.desktop
+```
+
+服務層可由 CLI、桌面控制器或背景 worker 共用：
+
+```python
+from pathlib import Path
+from sticker_toolkit.core import ProcessingOptions
+from sticker_toolkit.services import StickerService
+
+result = StickerService().process(
+    Path("input/sheet.png"),
+    ProcessingOptions(platform="both", output_directory=Path("output")),
+    progress_callback=lambda percent, message: print(percent, message),
+)
+```
 
 ## 調整尺寸與安全留白
 
@@ -142,10 +164,10 @@ Shared Sticker Images
 ## 開發與測試
 
 ```bash
-python3 -m compileall -q .
-python3 -m unittest discover -s tests -v
+PYTHONPATH=src python3 -m compileall -q src core exporters sticker_processor.py
+PYTHONPATH=src python3 -m unittest discover -s tests -v
 ruff check .
-mypy sticker_processor.py core exporters
+mypy sticker_processor.py src/sticker_toolkit core exporters
 ```
 
 ## 已知限制
@@ -157,13 +179,14 @@ mypy sticker_processor.py core exporters
 
 ## 版本資訊
 
-目前版本：`v1.2.3`
+目前版本：`v1.3.0-dev`
 
 詳見 [CHANGELOG.md](CHANGELOG.md)。
 
 ## Roadmap
 
 - 支援其他列數與欄數的合集圖
-- 提供圖形化平台、main、tab 與 Banner 選擇介面
+- 完成桌面圖形介面並使用既有 `StickerController`／背景 worker
+- 使用 PyInstaller 進行 macOS／Windows 封裝，再進入 DMG／EXE 發布流程
 - 提供裁切與安全留白即時調整
 - 加入更多平台 exporter 與批次處理

@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.3.0-dev
+
+### Changed
+
+- 新增 `src/sticker_toolkit` 套件，將 Core、Services、Presets 與 UI adapters 分層。
+- CLI 改為建立 `ProcessingOptions` 並呼叫唯一的 `StickerService` 流程。
+- 圖片處理結果改以 `ProcessingResult` 回傳，錯誤使用明確例外階層。
+- 新增可選進度 callback、桌面控制器與背景 worker 骨架，準備後續封裝。
+- 保留 v1.2.3 的圖片演算法、LINE／WeChat 素材與 ZIP 結構。
+
+### Development
+
+- 新增 `python -m sticker_toolkit.ui.cli` 與預留的桌面 module 入口。
+- 整理 `pyproject.toml` 的核心、build 與 dev dependencies。
+
 ## v1.2.3
 
 ### Fixed
