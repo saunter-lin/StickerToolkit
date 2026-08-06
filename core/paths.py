@@ -29,7 +29,10 @@ class ProjectPaths:
 
     @classmethod
     def from_root(cls, project_root: Path) -> ProjectPaths:
-        output_root = project_root / "output"
+        return cls.from_output(project_root / "output")
+
+    @classmethod
+    def from_output(cls, output_root: Path) -> ProjectPaths:
         preview_root = output_root / "preview"
         return cls(
             output=OutputPaths(
