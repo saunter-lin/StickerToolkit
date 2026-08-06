@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import tempfile
 import unittest
 import zipfile
@@ -319,10 +320,45 @@ class SharedPipelineTests(unittest.TestCase):
             ):
                 process(source, None, "both", None, 1, 1, 1, False, False)
             shared_pipeline.assert_called_once()
-            self.assertTrue((folder / "preview" / "line" / "preview.png").is_file())
-            self.assertTrue((folder / "preview" / "wechat" / "wechat_preview.png").is_file())
-            self.assertFalse((folder / "preview" / "line" / "banner.png").exists())
-            self.assertFalse((folder / "preview" / "wechat" / "main.png").exists())
+            self.assertTrue((folder / "output" / "preview" / "line" / "preview.png").is_file())
+            self.assertTrue(
+                (folder / "output" / "preview" / "wechat" / "wechat_preview.png").is_file()
+            )
+            self.assertFalse((folder / "preview").exists())
+            self.assertFalse((folder / "output" / "preview" / "line" / "banner.png").exists())
+            self.assertFalse((folder / "output" / "preview" / "wechat" / "main.png").exists())
+
+    def test_platform_preview_cleanup_is_isolated_and_legacy_preview_is_removed(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            source = folder / "sheet.png"
+            sample_sheet().save(source)
+            paths = ProjectPaths.from_root(folder)
+            legacy_preview = folder / "preview"
+            legacy_preview.mkdir()
+            (legacy_preview / "old.png").write_bytes(b"old")
+
+            with patch("sticker_processor.PROJECT_PATHS", paths), patch(
+                "sticker_processor.ROOT", folder
+            ):
+                process(source, None, "both", None, 1, 1, 1, False, False)
+                wechat_preview = paths.preview.wechat_directory / WECHAT_CONFIG.preview_name
+                wechat_bytes = wechat_preview.read_bytes()
+                process(source, None, "line", None, 1, 1, 1, False, False)
+                self.assertEqual(wechat_preview.read_bytes(), wechat_bytes)
+
+                line_preview = paths.preview.line_directory / LINE_CONFIG.preview_name
+                line_bytes = line_preview.read_bytes()
+                process(source, None, "wechat", None, 1, 1, 1, False, False)
+                self.assertEqual(line_preview.read_bytes(), line_bytes)
+
+            self.assertFalse(legacy_preview.exists())
+            self.assertTrue(paths.preview.root.is_relative_to(paths.output.root))
+            self.assertTrue(
+                all(path.is_relative_to(paths.output.root) for path in paths.output.root.rglob("*"))
+            )
+            shutil.rmtree(paths.output.root)
+            self.assertFalse(paths.output.root.exists())
 
 
 if __name__ == "__main__":

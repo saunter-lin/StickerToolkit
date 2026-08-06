@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.3
+
+### Fixed
+
+- Preview 統一移至 `output/preview/line/` 與 `output/preview/wechat/`。
+- 平台重新輸出只清理自己的素材、ZIP 與 Preview，保留另一平台結果。
+- 執行時安全移除 v1.2.2 遺留在專案根目錄的 `preview/`。
+- 所有生成素材、預覽與 ZIP 現在都可透過刪除 `output/` 一次清理。
+
 ## v1.2.2
 
 ### Fixed

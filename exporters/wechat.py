@@ -11,7 +11,7 @@ from core.config import WECHAT_CONFIG
 from core.images import StickerError, contain, load_image
 from core.paths import OutputPaths
 
-from .common import clean_directory, save_optimized_png, write_zip
+from .common import clean_directory, remove_file, save_optimized_png, write_zip
 
 
 @dataclass(frozen=True)
@@ -74,6 +74,7 @@ def export_wechat(
 
     staging = paths.wechat_directory
     clean_directory(staging, "WeChat 輸出")
+    remove_file(paths.wechat_zip, "WeChat ZIP")
     sticker_paths, entries = _save_stickers(stickers, staging)
 
     cover_path = staging / "cover.png"

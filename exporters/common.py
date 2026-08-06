@@ -20,6 +20,23 @@ def clean_directory(path: Path, label: str) -> None:
         raise StickerError(f"無法清理{label}目錄：{path}（{exc}）") from exc
 
 
+def remove_directory(path: Path, label: str) -> None:
+    """移除舊目錄但不重新建立，用於一次性結構遷移。"""
+    try:
+        if path.exists():
+            shutil.rmtree(path)
+    except OSError as exc:
+        raise StickerError(f"無法移除{label}目錄：{path}（{exc}）") from exc
+
+
+def remove_file(path: Path, label: str) -> None:
+    """安全移除即將重建的平台檔案。"""
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as exc:
+        raise StickerError(f"無法清理{label}：{path}（{exc}）") from exc
+
+
 def save_rgba_png(image: Image.Image, path: Path) -> None:
     try:
         image.convert("RGBA").save(path, "PNG")

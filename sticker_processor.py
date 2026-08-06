@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sticker Toolkit v1.2.2 多平台貼圖匯出入口。"""
+"""Sticker Toolkit v1.2.3 多平台貼圖匯出入口。"""
 
 from __future__ import annotations
 
@@ -14,12 +14,12 @@ from core.config import LINE_CONFIG, WECHAT_CONFIG
 from core.discovery import resolve_source
 from core.images import StickerError, build_shared_stickers, load_image
 from core.paths import ProjectPaths
-from exporters.common import clean_directory, save_rgba_png
+from exporters.common import clean_directory, remove_directory, save_rgba_png
 from exporters.line import export_line
 from exporters.wechat import export_wechat
 from preview import make_line_preview, make_preview, make_wechat_preview
 
-VERSION = "1.2.2"
+VERSION = "1.2.3"
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / "input"
 PROJECT_PATHS = ProjectPaths.from_root(ROOT)
@@ -108,6 +108,8 @@ def process(
     open_preview: bool,
 ) -> None:
     PROJECT_PATHS.output.root.mkdir(exist_ok=True)
+    # v1.2.2 的 Preview 位於專案根目錄；新版本統一收進 output/。
+    remove_directory(ROOT / "preview", "舊版 Preview")
     platform = choose_platform(platform_option, interactive)
     use_line = platform in {"line", "both"}
     use_wechat = platform in {"wechat", "both"}

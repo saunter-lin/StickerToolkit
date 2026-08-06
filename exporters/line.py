@@ -10,7 +10,7 @@ from core.config import LINE_CONFIG
 from core.images import StickerError, contain
 from core.paths import OutputPaths
 
-from .common import clean_directory, save_rgba_png, validate_png, write_zip
+from .common import clean_directory, remove_file, save_rgba_png, validate_png, write_zip
 
 OLD_LINE_ZIP_NAMES = ("line_sticker_package.zip", "line_stickers.zip")
 
@@ -19,6 +19,7 @@ def export_line(stickers: list[Image.Image], paths: OutputPaths, main_index: int
     if LINE_CONFIG.main_size is None or LINE_CONFIG.tab_size is None:
         raise RuntimeError("LINE_CONFIG 缺少 main 或 tab 尺寸。")
     clean_directory(paths.line_directory, "LINE 輸出")
+    remove_file(paths.line_zip, "LINE ZIP")
     # 清除 v1.2.1 以前散落在 output/ 根目錄的 LINE 素材，不觸碰 WeChat。
     legacy_names = [*(f"{index:02d}.png" for index in range(1, 17)), "main.png", "tab.png"]
     for name in legacy_names:
