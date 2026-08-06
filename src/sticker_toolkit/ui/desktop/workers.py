@@ -1,32 +1,55 @@
-"""不綁定特定 GUI framework 的背景工作骨架。"""
+"""以 Qt signal 將 StickerService 結果安全送回 UI thread。"""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import logging
 from pathlib import Path
-from threading import Thread
 
-from sticker_toolkit.core import ProcessingOptions, ProcessingResult, ProgressCallback
-from sticker_toolkit.services import StickerService
+from PySide6.QtCore import QObject, Signal, Slot
 
-ResultCallback = Callable[[ProcessingResult], None]
-ErrorCallback = Callable[[Exception], None]
+from sticker_toolkit.core import ProcessingOptions
+
+from .controllers import StickerController
+
+logger = logging.getLogger(__name__)
 
 
-def start_processing_worker(
-    service: StickerService,
-    source_path: Path,
-    options: ProcessingOptions,
-    progress_callback: ProgressCallback | None,
-    result_callback: ResultCallback,
-    error_callback: ErrorCallback,
-) -> Thread:
-    def run() -> None:
+class StickerWorker(QObject):
+    progress_changed = Signal(int, str)
+    completed = Signal(object)
+    failed = Signal(object)
+    finished = Signal()
+
+    def __init__(
+        self,
+        controller: StickerController,
+        source_path: Path,
+        options: ProcessingOptions,
+    ) -> None:
+        super().__init__()
+        self._controller = controller
+        self._source_path = source_path
+        self._options = options
+
+    @Slot()
+    def run(self) -> None:
+        logger.info(
+            "Processing started platform=%s source=%s output=%s",
+            self._options.platform,
+            self._source_path,
+            self._options.output_directory,
+        )
         try:
-            result_callback(service.process(source_path, options, progress_callback))
+            result = self._controller.process(
+                self._source_path,
+                self._options,
+                lambda percent, message: self.progress_changed.emit(percent, message),
+            )
         except Exception as exc:
-            error_callback(exc)
-
-    worker = Thread(target=run, name="sticker-toolkit-worker", daemon=True)
-    worker.start()
-    return worker
+            logger.exception("Sticker processing failed")
+            self.failed.emit(exc)
+        else:
+            logger.info("Processing completed platform=%s", self._options.platform)
+            self.completed.emit(result)
+        finally:
+            self.finished.emit()
