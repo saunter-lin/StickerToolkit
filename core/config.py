@@ -33,6 +33,8 @@ class WechatConfig:
     banner_width: int = 750
     banner_height: int = 400
     banner_max_bytes: int = 500 * 1024
+    banner_target_ratio: float = 750 / 400
+    banner_ratio_tolerance: float = 0.05
     banner_padding: int = 0
     cover_width: int = 240
     cover_height: int = 240

@@ -48,7 +48,7 @@ def make_wechat_preview(
 ) -> Image.Image:
     """顯示貼圖、Banner、ZIP 內容及微信素材完整性。"""
     grid = make_preview(stickers)
-    extra_height = 300
+    extra_height = 540
     result = Image.new("RGBA", (grid.width, grid.height + extra_height), (225, 229, 235, 255))
     result.alpha_composite(grid, (0, 0))
     draw = ImageDraw.Draw(result)
@@ -72,7 +72,7 @@ def make_wechat_preview(
         lines.append(f"... and {len(zip_contents) - 10} more")
     for offset, name in enumerate(lines, 1):
         draw.text((list_x, y + offset * 18), name, fill=(40, 40, 40, 255), font=font)
-    status_y = y + 170
+    status_y = y + 235
     status_color = (24, 120, 55, 255) if complete else (170, 65, 35, 255)
     for offset, message in enumerate(validation_messages):
         draw.text((12, status_y + offset * 18), message, fill=(35, 35, 35, 255), font=font)

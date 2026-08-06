@@ -39,7 +39,7 @@ def prepare_banner(banner_path: Path, output_path: Path) -> Path:
         prepared,
         output_path,
         WECHAT_CONFIG.banner_max_bytes,
-        "微信詳情頁橫幅超過 500KB，請簡化圖片內容或改用較小的輸出檔案。",
+        "微信詳情頁橫幅超過 500KB，請簡化圖片內容或調整輸出品質。",
     )
     return output_path
 
@@ -54,10 +54,10 @@ def _save_stickers(stickers: list[Image.Image], staging: Path) -> tuple[list[Pat
             prepared,
             path,
             WECHAT_CONFIG.sticker_max_bytes,
-            f"第 {index} 張微信表情圖超過 500KB，請簡化圖片內容或改用較小的輸出檔案。",
+            f"第 {index} 張微信表情圖超過 500KB，請簡化圖片內容或調整輸出品質。",
         )
         paths.append(path)
-        entries.append((path, f"wechat_sticker/{path.name}"))
+        entries.append((path, path.name))
     return paths, entries
 
 
@@ -81,9 +81,9 @@ def export_wechat(
         cover,
         cover_path,
         WECHAT_CONFIG.cover_max_bytes,
-        "微信封面圖超過 500KB，請簡化圖片內容或改用較小的輸出檔案。",
+        "微信封面圖超過 500KB，請簡化圖片內容或調整輸出品質。",
     )
-    entries.append((cover_path, "wechat_sticker/cover.png"))
+    entries.append((cover_path, "cover.png"))
 
     panel_icon_path = staging / "panel_icon.png"
     panel_icon = contain(
@@ -95,14 +95,14 @@ def export_wechat(
         panel_icon,
         panel_icon_path,
         WECHAT_CONFIG.panel_icon_max_bytes,
-        "微信聊天面板圖標超過 100KB，請簡化圖片內容或改用較小的輸出檔案。",
+        "微信聊天面板圖標超過 100KB，請簡化圖片內容或調整輸出品質。",
     )
-    entries.append((panel_icon_path, "wechat_sticker/panel_icon.png"))
+    entries.append((panel_icon_path, "panel_icon.png"))
 
     prepared_banner: Path | None = None
     if banner_path is not None:
         prepared_banner = prepare_banner(banner_path, staging / "banner.png")
-        entries.append((prepared_banner, "wechat_sticker/banner.png"))
+        entries.append((prepared_banner, "banner.png"))
 
     for old_name in ("wechat_sticker_package.zip",):
         try:
@@ -120,15 +120,28 @@ def export_wechat(
     banner_limit_kb = WECHAT_CONFIG.banner_max_bytes // 1024
     cover_limit_kb = WECHAT_CONFIG.cover_max_bytes // 1024
     panel_limit_kb = WECHAT_CONFIG.panel_icon_max_bytes // 1024
+    sticker_size_parts = [
+        f"{index:02d}={path.stat().st_size / 1024:.1f}KB"
+        for index, path in enumerate(sticker_paths, 1)
+    ]
+    sticker_size_messages = [
+        "表情圖大小：" + "、".join(sticker_size_parts[start : start + 4])
+        for start in range(0, len(sticker_size_parts), 4)
+    ]
     messages = [
-        f"表情圖：{len(sticker_paths)} 張，240×240，全部不大於 {sticker_limit_kb}KB",
+        f"表情圖：{len(sticker_paths)} 張，240×240 PNG，全部不大於 {sticker_limit_kb}KB",
+        *sticker_size_messages,
         (
-            f"詳情頁橫幅：750×400，不大於 {banner_limit_kb}KB"
+            f"詳情頁橫幅：750×400 PNG，{prepared_banner.stat().st_size / 1024:.1f}KB，"
+            f"不大於 {banner_limit_kb}KB"
             if prepared_banner
             else "詳情頁橫幅：缺少"
         ),
-        f"封面圖：240×240，不大於 {cover_limit_kb}KB",
-        f"聊天面板圖標：50×50，不大於 {panel_limit_kb}KB",
+        f"封面圖：240×240 PNG，{cover_path.stat().st_size / 1024:.1f}KB，不大於 {cover_limit_kb}KB",
+        (
+            f"聊天面板圖標：50×50 PNG，{panel_icon_path.stat().st_size / 1024:.1f}KB，"
+            f"不大於 {panel_limit_kb}KB"
+        ),
     ]
     return WechatExportResult(
         zip_path=zip_path,

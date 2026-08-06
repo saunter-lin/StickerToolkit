@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sticker Toolkit v1.2.0 多平台貼圖匯出入口。"""
+"""Sticker Toolkit v1.2.1 多平台貼圖匯出入口。"""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from exporters.line import export_line
 from exporters.wechat import export_wechat
 from preview import make_preview, make_wechat_preview
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / "input"
 OUTPUT_DIR = ROOT / "output"

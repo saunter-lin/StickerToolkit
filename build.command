@@ -10,7 +10,7 @@ pause_on_error() {
   exit 1
 }
 
-echo "Sticker Toolkit v1.2.0"
+echo "Sticker Toolkit v1.2.1"
 echo "=================="
 
 command -v python3 >/dev/null 2>&1 || pause_on_error "找不到 Python 3。請先從 https://www.python.org/downloads/macos/ 安裝。"

@@ -23,7 +23,7 @@ from core.discovery import (
 from core.images import StickerError, build_shared_stickers, contain, load_image
 from exporters.line import export_line
 from exporters.wechat import export_wechat, validate_sticker_count
-from sticker_processor import choose_banner
+from sticker_processor import choose_banner, process
 
 
 def sample_sheet() -> Image.Image:
@@ -105,7 +105,7 @@ class ExporterTests(unittest.TestCase):
         result = export_wechat(self.stickers, self.output, None)
         self.assertIsNone(result.banner_path)
         self.assertFalse(result.complete)
-        self.assertNotIn("wechat_sticker/banner.png", result.zip_contents)
+        self.assertNotIn("banner.png", result.zip_contents)
         self.assertEqual(len(result.zip_contents), 18)
         with zipfile.ZipFile(result.zip_path) as archive:
             self.assertEqual(len(archive.namelist()), 18)
@@ -117,26 +117,36 @@ class ExporterTests(unittest.TestCase):
         Image.new("RGB", (1000, 200), "blue").save(banner_path)
         result = export_wechat(self.stickers, self.output, banner_path, cover_index=3)
         self.assertTrue(result.complete)
-        self.assertIn("wechat_sticker/banner.png", result.zip_contents)
+        self.assertIn("banner.png", result.zip_contents)
         self.assertEqual(len(result.zip_contents), 19)
         for index in range(1, 17):
             sticker = self.output / "wechat_sticker" / f"{index:02d}.png"
             with Image.open(sticker) as image:
-                self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.sticker_size))
+                self.assertEqual(
+                    (image.format, image.mode, image.size),
+                    ("PNG", "RGBA", WECHAT_CONFIG.sticker_size),
+                )
             self.assertLessEqual(sticker.stat().st_size, WECHAT_CONFIG.sticker_max_bytes)
         assert result.banner_path is not None
         with Image.open(result.banner_path) as image:
             self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.banner_size))
         self.assertLessEqual(result.banner_path.stat().st_size, WECHAT_CONFIG.banner_max_bytes)
         with Image.open(result.cover_path) as image:
-            self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.cover_size))
+            self.assertEqual(
+                (image.format, image.mode, image.size),
+                ("PNG", "RGBA", WECHAT_CONFIG.cover_size),
+            )
         self.assertLessEqual(result.cover_path.stat().st_size, WECHAT_CONFIG.cover_max_bytes)
         with Image.open(result.panel_icon_path) as image:
-            self.assertEqual((image.format, image.size), ("PNG", WECHAT_CONFIG.panel_icon_size))
+            self.assertEqual(
+                (image.format, image.mode, image.size),
+                ("PNG", "RGBA", WECHAT_CONFIG.panel_icon_size),
+            )
         self.assertLessEqual(result.panel_icon_path.stat().st_size, WECHAT_CONFIG.panel_icon_max_bytes)
         with zipfile.ZipFile(result.zip_path) as archive:
-            self.assertEqual(archive.namelist()[0], "wechat_sticker/01.png")
-            self.assertNotIn("wechat_sticker/manifest.json", archive.namelist())
+            self.assertEqual(archive.namelist()[0], "01.png")
+            self.assertFalse(any("/" in name for name in archive.namelist()))
+            self.assertNotIn("manifest.json", archive.namelist())
             self.assertIsNone(archive.testzip())
 
     def test_wechat_zip_is_not_duplicated(self) -> None:
@@ -160,6 +170,8 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(WECHAT_CONFIG.sticker_max_bytes, 500 * 1024)
         self.assertEqual(WECHAT_CONFIG.banner_size, (750, 400))
         self.assertEqual(WECHAT_CONFIG.banner_max_bytes, 500 * 1024)
+        self.assertEqual(WECHAT_CONFIG.banner_target_ratio, 1.875)
+        self.assertEqual(WECHAT_CONFIG.banner_ratio_tolerance, 0.05)
         self.assertEqual(WECHAT_CONFIG.cover_size, (240, 240))
         self.assertEqual(WECHAT_CONFIG.cover_max_bytes, 500 * 1024)
         self.assertEqual(WECHAT_CONFIG.panel_icon_size, (50, 50))
@@ -263,6 +275,23 @@ class DiscoveryTests(unittest.TestCase):
             Image.new("RGB", (400, 750), "white").save(path, exif=exif)
             self.assertEqual(image_dimensions(path), (750, 400))
             self.assertTrue(is_banner_ratio_candidate(path))
+
+
+class SharedPipelineTests(unittest.TestCase):
+    def test_line_and_wechat_share_one_split_pipeline(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            source = folder / "sheet.png"
+            sample_sheet().save(source)
+            with (
+                patch("sticker_processor.OUTPUT_DIR", folder / "output"),
+                patch(
+                    "sticker_processor.build_shared_stickers",
+                    wraps=build_shared_stickers,
+                ) as shared_pipeline,
+            ):
+                process(source, None, "both", None, 1, 1, 1, False, False)
+            shared_pipeline.assert_called_once()
 
 
 if __name__ == "__main__":

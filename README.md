@@ -1,4 +1,4 @@
-# Multi Platform Sticker Toolkit v1.2.0（macOS）
+# Multi Platform Sticker Toolkit v1.2.1（macOS）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
@@ -74,7 +74,7 @@ python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9
 - `wechat_sticker.zip`：唯一的 WeChat ZIP，結構如下：
 
 ```text
-wechat_sticker/
+wechat_sticker.zip
 ├── 01.png                  # 240×240，最多 500KB
 ├── ...
 ├── 16.png
@@ -137,7 +137,7 @@ mypy sticker_processor.py core exporters
 
 ## 版本資訊
 
-目前版本：`v1.2.0`
+目前版本：`v1.2.1`
 
 詳見 [CHANGELOG.md](CHANGELOG.md)。
 

@@ -12,7 +12,7 @@ from .images import StickerError
 SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 KNOWN_BANNER_STEMS = {"wechat_banner", "banner"}
 SHEET_RATIO_RANGE = (0.75, 1.35)
-BANNER_RATIO_TOLERANCE = 0.05
+BANNER_RATIO_TOLERANCE = WECHAT_CONFIG.banner_ratio_tolerance
 
 
 def image_dimensions(path: Path) -> tuple[int, int]:
@@ -54,10 +54,10 @@ def is_banner_ratio_candidate(path: Path) -> bool:
         return True
     if width <= height:
         return False
-    target_ratio = target_width / target_height
+    target_ratio = WECHAT_CONFIG.banner_target_ratio
     actual_ratio = width / height
     ratio_difference = abs(actual_ratio - target_ratio) / target_ratio
-    return ratio_difference <= BANNER_RATIO_TOLERANCE
+    return ratio_difference <= WECHAT_CONFIG.banner_ratio_tolerance
 
 
 def is_exact_banner_size(path: Path) -> bool:

@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.1
+
+### Fixed
+
+- WeChat ZIP 改為真正的平鋪圖片結構，不含任何資料夾或 JSON。
+- 微信驗證摘要加入格式與每張表情圖的實際檔案大小。
+- 將 Banner 目標比例與 ±5% 容差集中至 `WECHAT_CONFIG`。
+- 明確驗證 LINE 與 WeChat 共用同一次 Split／Trim／Safe Margin 管線。
+
 ## v1.2.0
 
 ### Added
