@@ -9,7 +9,7 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 - 移除透明空白或與邊界相連的近白背景
 - 保持比例、透明背景、置中及安全留白
 - LINE：自選 `main.png`、`tab.png`，規格驗證、Preview 與 ZIP
-- WeChat：依圖片尺寸／比例自動偵測任意檔名 Banner、Preview 與 ZIP
+- WeChat：檔名優先、圖片尺寸／比例備援偵測 Banner、Preview 與 ZIP
 - 可選 LINE、WeChat 或兩者一起輸出
 - Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
 - 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
@@ -37,7 +37,14 @@ MySticker/
 └── my_image.png
 ```
 
-工具不依靠檔名判斷：近方形圖片優先視為 4×4 合集；剩餘 PNG 若寬高比接近 `WECHAT_CONFIG.banner_size`（目前允許目標比例 ±25%），即視為 Banner。若合集或 Banner 候選超過一張，互動模式會列出檔名與尺寸讓使用者選擇。
+Banner 偵測順序如下：
+
+1. `--banner` 手動指定路徑。
+2. 不分大小寫的 `wechat_banner` 或 `banner` 檔名，支援 PNG、JPG、JPEG、WebP；檔名符合時不限制原始比例。
+3. 其他剩餘圖片若為橫向，且套用 EXIF Orientation 後的寬高比與 `WECHAT_CONFIG.banner_size` 相差不超過 5%，即視為比例候選。
+4. 仍找不到時提示手動輸入；直接按 Enter 可略過。
+
+近方形圖片優先視為 4×4 合集，已選定的合集不會同時作為 Banner。多張同優先級 Banner 候選時，互動模式會列出檔名、方向修正後的尺寸與比例供選擇。所有 Banner 最後都經同一套 EXIF 方向校正、色彩轉換、等比例 contain 與置中流程。
 
 ## 命令列使用方式
 

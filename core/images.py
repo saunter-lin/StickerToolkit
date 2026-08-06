@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import deque
 from pathlib import Path
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 WHITE_THRESHOLD = 248
 GRID_ROWS = 4
@@ -20,10 +20,11 @@ class StickerError(RuntimeError):
 def load_image(path: Path, label: str = "圖片") -> Image.Image:
     try:
         with Image.open(path) as opened:
-            opened.load()
-            return opened.convert("RGBA")
+            oriented = ImageOps.exif_transpose(opened)
+            oriented.load()
+            return oriented.convert("RGBA")
     except UnidentifiedImageError as exc:
-        raise StickerError(f"{label}不是有效的 PNG 或 JPG：{path.name}") from exc
+        raise StickerError(f"{label}不是有效或支援的圖片：{path.name}") from exc
     except (OSError, ValueError) as exc:
         raise StickerError(f"{label}解碼失敗：{path.name}（{exc}）") from exc
 

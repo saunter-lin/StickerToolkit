@@ -19,3 +19,4 @@
 
 - LINE 統一只輸出 `line_sticker.zip`，移除重複 ZIP。
 - WeChat ZIP 移除 `manifest.json`，Banner 統一輸出為 `wechat/banner/banner.png`。
+- WeChat Banner 改為手動路徑、已知檔名、±5% 比例的分級備援偵測，並支援 EXIF Orientation。

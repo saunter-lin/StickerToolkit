@@ -9,10 +9,20 @@ from unittest.mock import patch
 from PIL import Image, ImageDraw
 
 from core.config import LINE_CONFIG, WECHAT_CONFIG
-from core.discovery import banner_candidates, choose_candidate, sheet_candidates
+from core.discovery import (
+    BANNER_RATIO_TOLERANCE,
+    banner_candidates,
+    choose_candidate,
+    image_dimensions,
+    is_banner_ratio_candidate,
+    named_banner_candidates,
+    ratio_banner_candidates,
+    resolve_source,
+)
 from core.images import StickerError, build_shared_stickers, contain, load_image
 from exporters.line import export_line
 from exporters.wechat import export_wechat
+from sticker_processor import choose_banner
 
 
 def sample_sheet() -> Image.Image:
@@ -105,13 +115,62 @@ class ExporterTests(unittest.TestCase):
 
 
 class DiscoveryTests(unittest.TestCase):
-    def test_banner_detected_by_ratio_not_filename(self) -> None:
+    def test_wechat_banner_name_is_detected_at_any_ratio(self) -> None:
         with tempfile.TemporaryDirectory() as folder_name:
             folder = Path(folder_name)
             Image.new("RGB", (800, 800), "white").save(folder / "Berry.png")
-            Image.new("RGB", (750, 400), "white").save(folder / "my_image.png")
-            self.assertEqual([path.name for path in sheet_candidates(folder)], ["Berry.png"])
-            self.assertEqual(banner_candidates(folder, folder / "Berry.png"), [folder / "my_image.png"])
+            named = folder / "wechat_banner.png"
+            Image.new("RGB", (200, 900), "white").save(named)
+            self.assertEqual(named_banner_candidates(folder, folder / "Berry.png"), [named])
+            self.assertEqual(banner_candidates(folder, folder / "Berry.png"), [named])
+
+    def test_banner_name_and_case_insensitive_webp_are_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            source = folder / "sheet.png"
+            Image.new("RGB", (800, 800), "white").save(source)
+            lower = folder / "banner.jpg"
+            upper_png = folder / "BANNER.PNG"
+            upper = folder / "BANNER.webp"
+            Image.new("RGB", (300, 700), "red").save(lower)
+            Image.new("RGB", (310, 700), "green").save(upper_png, format="PNG")
+            Image.new("RGB", (320, 700), "blue").save(upper, format="WEBP")
+            self.assertEqual(set(named_banner_candidates(folder, source)), {lower, upper_png, upper})
+
+    def test_banner_png_name_is_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            source = folder / "sheet.png"
+            banner = folder / "banner.png"
+            Image.new("RGB", (800, 800), "white").save(source)
+            Image.new("RGB", (100, 500), "black").save(banner)
+            self.assertEqual(banner_candidates(folder, source), [banner])
+
+    def test_arbitrary_name_with_target_or_near_ratio_is_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            source = folder / "sheet.png"
+            exact = folder / "my_image.png"
+            near = folder / "wechat01.png"
+            Image.new("RGB", (800, 800), "white").save(source)
+            Image.new("RGB", (1500, 800), "red").save(exact)
+            Image.new("RGB", (1967, 1000), "blue").save(near)
+            candidates = ratio_banner_candidates(folder, source)
+            self.assertEqual(set(candidates), {exact, near})
+            self.assertEqual(BANNER_RATIO_TOLERANCE, 0.05)
+
+    def test_ratio_over_tolerance_is_not_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            path = Path(folder_name) / "wide.png"
+            Image.new("RGB", (2000, 1000), "white").save(path)
+            self.assertFalse(is_banner_ratio_candidate(path))
+
+    def test_sticker_sheet_is_excluded_from_banner(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            source = folder / "sheet.png"
+            Image.new("RGB", (1500, 800), "white").save(source)
+            self.assertNotIn(source, banner_candidates(folder, source))
 
     def test_multiple_banners_can_be_selected(self) -> None:
         with tempfile.TemporaryDirectory() as folder_name:
@@ -122,6 +181,35 @@ class DiscoveryTests(unittest.TestCase):
             Image.new("RGB", (900, 500), "white").save(second)
             with patch("builtins.input", return_value="2"):
                 self.assertEqual(choose_candidate([first, second], True, "Banner"), second)
+
+    def test_manual_banner_path_and_enter_to_skip(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            manual = Path(folder_name) / "manual-any-ratio.jpg"
+            Image.new("RGB", (100, 900), "white").save(manual)
+            self.assertEqual(choose_banner(manual, None, False, True), manual.resolve())
+            with patch("builtins.input", side_effect=["/missing/banner.png", str(manual)]):
+                self.assertEqual(choose_banner(None, None, True, True), manual.resolve())
+            with patch("builtins.input", return_value=""):
+                self.assertIsNone(choose_banner(None, None, True, True))
+
+    def test_manual_override_skips_automatic_banner_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            folder = Path(folder_name)
+            sheet = folder / "sheet.png"
+            Image.new("RGB", (800, 800), "white").save(sheet)
+            Image.new("RGB", (750, 400), "red").save(folder / "banner.png")
+            source, detected = resolve_source(folder, folder, True, detect_banner=False)
+            self.assertEqual(source, sheet.resolve())
+            self.assertIsNone(detected)
+
+    def test_exif_orientation_is_used_for_ratio(self) -> None:
+        with tempfile.TemporaryDirectory() as folder_name:
+            path = Path(folder_name) / "rotated.jpg"
+            exif = Image.Exif()
+            exif[274] = 6
+            Image.new("RGB", (400, 750), "white").save(path, exif=exif)
+            self.assertEqual(image_dimensions(path), (750, 400))
+            self.assertTrue(is_banner_ratio_candidate(path))
 
 
 if __name__ == "__main__":

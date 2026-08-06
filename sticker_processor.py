@@ -63,16 +63,28 @@ def choose_banner(
         candidate = supplied.expanduser().resolve()
         if not candidate.is_file():
             raise StickerError(f"找不到 WeChat Banner：{candidate}")
+        load_image(candidate, "WeChat Banner")
         return candidate
     if detected is not None:
-        print(f"依圖片規格自動偵測 WeChat Banner：{detected.name}")
+        load_image(detected, "WeChat Banner")
+        print(f"自動偵測 WeChat Banner：{detected.name}")
         return detected
     if interactive:
-        answer = input("未偵測到符合比例的 Banner；可輸入 Banner 路徑，直接 Enter 略過：").strip()
-        if answer:
+        while True:
+            answer = input(
+                "未自動偵測到 WeChat Banner；請輸入 Banner 圖片路徑，直接 Enter 可略過："
+            ).strip()
+            if not answer:
+                break
             candidate = Path(answer).expanduser().resolve()
             if not candidate.is_file():
-                raise StickerError(f"找不到 WeChat Banner：{candidate}")
+                print(f"路徑無效：找不到 WeChat Banner：{candidate}")
+                continue
+            try:
+                load_image(candidate, "WeChat Banner")
+            except StickerError as exc:
+                print(f"路徑無效：{exc}")
+                continue
             return candidate
     print("警告：未提供 WeChat Banner，將省略 Banner 並繼續輸出。")
     return None
@@ -162,11 +174,19 @@ def main() -> int:
     try:
         if args.input is not None and args.path is not None:
             raise StickerError("請勿同時使用拖放路徑與 --input。")
-        source, detected_banner = resolve_source(args.input or args.path, INPUT_DIR, args.interactive)
+        platform = choose_platform(args.platform, args.interactive)
+        use_wechat = platform in {"wechat", "both"}
+        detect_banner = use_wechat and args.banner is None
+        source, detected_banner = resolve_source(
+            args.input or args.path,
+            INPUT_DIR,
+            args.interactive,
+            detect_banner=detect_banner,
+        )
         process(
             source,
             detected_banner,
-            args.platform,
+            platform,
             args.banner,
             args.main,
             args.tab,
