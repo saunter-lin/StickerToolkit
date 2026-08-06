@@ -2,7 +2,7 @@
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
-版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3 目前仍為開發版，尚未建立正式 Tag 或安裝包。
+版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3 目前仍為開發版，尚未建立正式 Tag 或 GitHub Release。
 
 ## 功能
 
@@ -35,15 +35,27 @@ PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
 
 桌面版目前可選擇來源圖片、LINE／微信／兩者、微信 Banner 與輸出目錄；支援 4×4 設定驗證、Preview／ZIP 選項、背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
 
-桌面設定使用 Qt `QSettings`，macOS 通常保存於 `~/Library/Preferences/` 的 StickerToolkit 設定中。Log 位於：
+桌面設定使用 Qt `QSettings`，macOS 通常保存於 `~/Library/Preferences/` 的 StickerToolkit 設定中。封裝版與原始碼版使用相同的處理核心；原始碼版需準備 Python 環境，封裝版則自帶 Python、Qt 與 Pillow。Log 位於：
 
 ```text
 ~/Library/Logs/StickerToolkit/sticker_toolkit.log
 ```
 
-Windows Log 預設位於 `%LOCALAPPDATA%/StickerToolkit/Logs/`。應用資源一律透過 `get_resource_path()` 取得，兼容原始碼與未來 PyInstaller frozen 模式。
+Windows Log 預設位於 `%LOCALAPPDATA%/StickerToolkit/Logs/`。應用資源一律透過 `get_resource_path()` 取得，兼容原始碼與 PyInstaller frozen 模式。
 
-目前 Repository 尚未納入正式 GUI 截圖；畫面會在 PyInstaller／App icon 與發行版視覺確認後補上，避免以開發中介面冒充正式發布畫面。
+目前 Repository 尚未納入正式 GUI 截圖；畫面會在正式 Release 視覺確認後補上，避免以開發中介面冒充正式發布畫面。
+
+### macOS 封裝版（v1.3.0-dev）
+
+目前封裝驗證平台為 Apple Silicon `arm64`，尚未宣稱支援 Intel 或 Universal。DMG 檔名格式為：
+
+```text
+StickerToolkit-v<version>-macOS-<arch>.dmg
+```
+
+開啟 DMG 後，將 `Sticker Toolkit.app` 拖到 `Applications` 捷徑，再從「應用程式」啟動。App 目前是 unsigned／未公證測試建置；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。專案不會宣稱已完成 Apple Developer 簽章或 notarization。
+
+Windows 封裝設定與 `.ico` 已備妥，但正式 EXE 必須在原生 Windows 10／11 環境建置與驗證；目前沒有可發布的 Windows 產物。
 
 ### 使用 input 資料夾
 
@@ -158,7 +170,7 @@ Filesystem outputs
 - `sticker_processor.py`：舊版命令的薄相容入口，不再保存圖片處理流程
 - `cover.py`、`exporter.py`：v1.1 程式介面的相容層
 
-Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面 worker 使用 Qt signal 將進度、結果與錯誤送回主執行緒。正式 PyInstaller／DMG／EXE 封裝將在 v1.3 後續階段完成。
+Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面 worker 使用 Qt signal 將進度、結果與錯誤送回主執行緒。macOS arm64 PyInstaller／DMG 測試封裝已完成；Windows 正式產物仍待原生環境驗證。
 
 ### 新套件入口
 
@@ -206,12 +218,38 @@ QT_QPA_PLATFORM=offscreen PYTHONPATH=src .venv/bin/python -m unittest discover -
 PYTHONPATH=src .venv/bin/mypy sticker_processor.py src/sticker_toolkit core exporters
 ```
 
+### 封裝
+
+安裝 PyInstaller：
+
+```bash
+.venv/bin/python -m pip install -e '.[desktop,build]'
+```
+
+macOS 建置、Bundle 驗證與 DMG：
+
+```bash
+PYTHON_BIN=.venv/bin/python packaging/build_macos.sh
+packaging/verify_macos_app.sh
+PYTHON_BIN=.venv/bin/python packaging/create_dmg.sh
+```
+
+Windows 請在原生 Windows PowerShell 執行：
+
+```powershell
+packaging\build_windows.ps1 -Python .venv\Scripts\python
+```
+
+詳細需求、產物位置與 Windows 驗證項目請參閱 [packaging/README.md](packaging/README.md) 與 [Windows 原生驗證清單](packaging/WINDOWS_TEST_CHECKLIST.md)。`build/`、`dist/`、DMG、Log、cache 與測試產物皆不納入 Git。
+
 ## 已知限制
 
 - 合集必須是規則排列的 4×4；不支援其他格數或不等寬排版。
 - JPG 壓縮雜色可能影響白底移除，建議優先使用含透明背景的 PNG。
 - `tab.png` 不使用角色臉部辨識模型，只會緊密裁切並放大完整主體。
 - 首次安裝 Pillow 時需要網路，且 macOS 必須已有 Python 3。
+- macOS 測試封裝目前僅驗證 Apple Silicon `arm64`，且未簽章、未公證。
+- Windows EXE 尚待原生 Windows 環境建置、完整 smoke test 與防毒誤報檢查。
 
 ## 版本資訊
 
@@ -222,7 +260,8 @@ PYTHONPATH=src .venv/bin/mypy sticker_processor.py src/sticker_toolkit core expo
 ## Roadmap
 
 - 支援其他列數與欄數的合集圖
-- 使用 PyInstaller 進行 macOS／Windows 封裝，再進入 DMG／EXE 發布流程
-- 加入正式 App icon 與平台 UI 圖示
+- 完成 Developer ID 簽章、公證與 Gatekeeper 發行驗證
+- 在原生 Windows 環境完成 EXE 建置、測試與發行格式選擇
+- 評估 Intel／Universal macOS 建置需求
 - 提供裁切與安全留白即時調整
 - 加入更多平台 exporter 與批次處理

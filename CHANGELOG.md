@@ -12,12 +12,21 @@
 - 使用 QSettings 保存最近來源資料夾、輸出資料夾、平台與視窗大小。
 - 新增 rotating log、跨平台開啟輸出資料夾，以及兼容原始碼／PyInstaller frozen 模式的資源路徑工具。
 - 新增 ViewModel、Controller、Worker、GUI 狀態及桌面整合測試。
+- 新增跨平台 App Icon 資源、PyInstaller `.spec` 與版本共用的封裝設定。
+- 新增 macOS App／DMG 建置及 Bundle 驗證腳本，DMG 內含 Applications 捷徑與 SHA-256。
+- 新增原生 Windows PowerShell 建置腳本與 Windows smoke-test 清單。
 
 ### Changed
 
 - 建立 `src/sticker_toolkit` 分層架構，將 Core、Presets、Services、CLI 與 Desktop UI 隔離。
 - CLI 與 Desktop 共用 `StickerService`、`ProcessingOptions`、`ProcessingResult`、進度 callback 與自訂例外。
 - 保留 v1.2.3 的圖片演算法、LINE／WeChat 素材、Preview 與 ZIP 結構。
+- macOS 封裝目前限定已驗證的 Apple Silicon `arm64`，並明確標示為未簽章、未公證測試建置。
+
+### Pending
+
+- 在原生 Windows 環境完成 EXE 建置、中文路徑、防毒誤報及完整流程驗證。
+- 正式發布前確認是否等待 Windows 產物，以及是否進行 Apple Developer 簽章與公證。
 
 ## [v1.2.3] — 2026-08-06
 
