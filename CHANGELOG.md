@@ -1,8 +1,8 @@
 # Changelog
 
-本文件依據 Repository 內的 Commit、annotated Tag 與實際程式內容整理。GitHub 目前沒有另外建立 Release 項目；已發布版本以 Git Tag 為準。
+本文件依據 Repository 內的 Commit、annotated Tag、GitHub Release 與實際程式內容整理。
 
-## [Unreleased] — v1.3.0-dev
+## [v1.3.0] — 2026-08-06
 
 ### Added
 
@@ -28,7 +28,7 @@
 ### Pending
 
 - 在原生 Windows 環境完成 EXE 建置、中文路徑、防毒誤報及完整流程驗證。
-- 正式發布前確認是否等待 Windows 產物，以及是否進行 Apple Developer 簽章與公證。
+- 評估 Apple Developer 簽章與公證需求。
 
 ## [v1.2.3] — 2026-08-06
 
@@ -83,7 +83,7 @@
 
 Repository 中沒有可獨立驗證的 v1.0 Commit、Tag 或 GitHub Release。v1.1.0 README 僅記錄其保留「V1 相容」預設行為，因此不另行推測或拆分 v1.0 功能；可驗證的版本歷史從 v1.1.0 開始。
 
-[Unreleased]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.3...HEAD
+[v1.3.0]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.3...v1.3.0
 [v1.2.3]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.2...v1.2.3
 [v1.2.2]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.1...v1.2.2
 [v1.2.1]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.0...v1.2.1

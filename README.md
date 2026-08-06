@@ -1,8 +1,8 @@
-# Multi Platform Sticker Toolkit v1.3.0-dev（macOS）
+# Multi Platform Sticker Toolkit v1.3.0（macOS）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
-版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3 目前仍為開發版，尚未建立正式 Tag 或 GitHub Release。
+版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3.0 是首個正式 Desktop 版本。
 
 ## 功能
 
@@ -18,7 +18,7 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 
 ## macOS 操作方式
 
-### 桌面介面（v1.3 開發版）
+### 桌面介面（v1.3.0）
 
 先安裝桌面 optional dependency：
 
@@ -35,6 +35,8 @@ PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
 
 桌面版目前可選擇來源圖片、LINE／微信／兩者、微信 Banner 與輸出目錄；支援 4×4 設定驗證、Preview／ZIP 選項、背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
 
+![Sticker Toolkit v1.3.0 Desktop GUI](docs/images/sticker-toolkit-v1.3.png)
+
 選擇來源圖片後，Desktop 會建議同層的 `<來源檔名>_output` 作為輸出根目錄，例如 `berry.png` 對應 `berry_output/`、`my.sticker.sheet.png` 對應 `my.sticker.sheet_output/`。在本次操作中手動按「選擇目錄」後，自訂位置優先，不會因重新選擇來源而被覆蓋；只有有效且由使用者手動選擇的目錄會由 QSettings 恢復。建議位置不可寫時會在開始處理前顯示錯誤，不會改用系統暫存目錄。
 
 桌面設定使用 Qt `QSettings`，macOS 通常保存於 `~/Library/Preferences/` 的 StickerToolkit 設定中。封裝版與原始碼版使用相同的處理核心；原始碼版需準備 Python 環境，封裝版則自帶 Python、Qt 與 Pillow。Log 位於：
@@ -47,7 +49,7 @@ Windows Log 預設位於 `%LOCALAPPDATA%/StickerToolkit/Logs/`。應用資源一
 
 目前 Repository 尚未納入正式 GUI 截圖；畫面會在正式 Release 視覺確認後補上，避免以開發中介面冒充正式發布畫面。
 
-### macOS 封裝版（v1.3.0-dev）
+### macOS 封裝版（v1.3.0）
 
 目前封裝驗證平台為 Apple Silicon `arm64`，尚未宣稱支援 Intel 或 Universal。DMG 檔名格式為：
 
@@ -257,7 +259,7 @@ packaging\build_windows.ps1 -Python .venv\Scripts\python
 
 ## 版本資訊
 
-目前版本：`v1.3.0-dev`
+目前版本：`v1.3.0`
 
 詳見 [CHANGELOG.md](CHANGELOG.md)。
 
