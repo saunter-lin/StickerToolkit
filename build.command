@@ -10,7 +10,7 @@ pause_on_error() {
   exit 1
 }
 
-echo "Sticker Toolkit v1.2.3"
+echo "Sticker Toolkit v1.3.0-dev"
 echo "=================="
 
 command -v python3 >/dev/null 2>&1 || pause_on_error "找不到 Python 3。請先從 https://www.python.org/downloads/macos/ 安裝。"
@@ -26,7 +26,9 @@ elif ! python3 -c "import PIL" >/dev/null 2>&1; then
   PYTHON=".venv/bin/python"
 fi
 
-"$PYTHON" sticker_processor.py "$@" --interactive --open-preview || pause_on_error "圖片處理未完成，請查看上方錯誤訊息。"
+PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}" \
+  "$PYTHON" -m sticker_toolkit.ui.cli "$@" --interactive --open-preview \
+  || pause_on_error "圖片處理未完成，請查看上方錯誤訊息。"
 
 echo
 echo "處理成功！"
