@@ -1,67 +1,80 @@
 # Changelog
 
-## v1.3.0-dev
+本文件依據 Repository 內的 Commit、annotated Tag 與實際程式內容整理。GitHub 目前沒有另外建立 Release 項目；已發布版本以 Git Tag 為準。
+
+## [Unreleased] — v1.3.0-dev
+
+### Added
+
+- 新增 PySide6 桌面主視窗，可選擇來源圖片、LINE／微信／兩者、微信 Banner 與輸出目錄。
+- 新增 4×4 格線驗證、Preview／ZIP 選項、處理結果摘要及使用者可理解的錯誤畫面。
+- 使用 QThread worker 呼叫 `StickerService`，透過 Qt signals 回傳真實進度、完成結果與錯誤，避免阻塞 UI thread。
+- 使用 QSettings 保存最近來源資料夾、輸出資料夾、平台與視窗大小。
+- 新增 rotating log、跨平台開啟輸出資料夾，以及兼容原始碼／PyInstaller frozen 模式的資源路徑工具。
+- 新增 ViewModel、Controller、Worker、GUI 狀態及桌面整合測試。
 
 ### Changed
 
-- 新增 `src/sticker_toolkit` 套件，將 Core、Services、Presets 與 UI adapters 分層。
-- CLI 改為建立 `ProcessingOptions` 並呼叫唯一的 `StickerService` 流程。
-- 圖片處理結果改以 `ProcessingResult` 回傳，錯誤使用明確例外階層。
-- 新增可選進度 callback、桌面控制器與背景 worker 骨架，準備後續封裝。
-- 保留 v1.2.3 的圖片演算法、LINE／WeChat 素材與 ZIP 結構。
+- 建立 `src/sticker_toolkit` 分層架構，將 Core、Presets、Services、CLI 與 Desktop UI 隔離。
+- CLI 與 Desktop 共用 `StickerService`、`ProcessingOptions`、`ProcessingResult`、進度 callback 與自訂例外。
+- 保留 v1.2.3 的圖片演算法、LINE／WeChat 素材、Preview 與 ZIP 結構。
 
-### Development
-
-- 新增 `python -m sticker_toolkit.ui.cli` 與預留的桌面 module 入口。
-- 整理 `pyproject.toml` 的核心、build 與 dev dependencies。
-
-## v1.2.3
+## [v1.2.3] — 2026-08-06
 
 ### Fixed
 
 - Preview 統一移至 `output/preview/line/` 與 `output/preview/wechat/`。
 - 平台重新輸出只清理自己的素材、ZIP 與 Preview，保留另一平台結果。
-- 執行時安全移除 v1.2.2 遺留在專案根目錄的 `preview/`。
-- 所有生成素材、預覽與 ZIP 現在都可透過刪除 `output/` 一次清理。
+- 執行時安全移除舊版專案根目錄的 `preview/`；所有生成內容可透過刪除 `output/` 一次清理。
 
-## v1.2.2
-
-### Fixed
-
-- LINE 素材改為輸出至獨立的 `output/line_sticker/`。
-- LINE ZIP 使用 `line_sticker/` 內部資料夾，且仍只產生一份 ZIP。
-- Preview 改為 `preview/line/` 與 `preview/wechat/` 分平台保存。
-- 平台重新輸出只清理自己的正式素材與 Preview，不再互相覆蓋或混放。
-
-## v1.2.1
+## [v1.2.2] — 2026-08-06
 
 ### Fixed
 
-- WeChat ZIP 改為真正的平鋪圖片結構，不含任何資料夾或 JSON。
-- 微信驗證摘要加入格式與每張表情圖的實際檔案大小。
-- 將 Banner 目標比例與 ±5% 容差集中至 `WECHAT_CONFIG`。
-- 明確驗證 LINE 與 WeChat 共用同一次 Split／Trim／Safe Margin 管線。
+- LINE 素材改為輸出至 `output/line_sticker/`。
+- LINE ZIP 使用 `line_sticker/` 內部目錄，且只產生一份 ZIP。
+- LINE／WeChat Preview 分平台保存，重新輸出不再互相覆蓋。
 
-## v1.2.0
+## [v1.2.1] — 2026-08-06
+
+### Fixed
+
+- WeChat ZIP 對齊實際上傳素材：平鋪圖片、不含資料夾或 `manifest.json`。
+- WeChat 表情圖、Banner、cover 與 panel icon 對齊尺寸、格式及檔案大小限制。
+- Banner 偵測加入已知檔名、精確尺寸、±5% 比例與 EXIF Orientation 備援。
+- 驗證 LINE 與 WeChat 共用一次 Split／Trim／Safe Margin 管線。
+
+## [v1.2.0] — 2026-08-06
 
 ### Added
 
-- WeChat Export
-- Multi Platform Architecture
-- Shared Sticker Pipeline
-- Folder Import 與任意檔名 Banner 尺寸／比例偵測
-- WeChat Preview 與純圖片 ZIP
-
-### Compatibility
-
-- 保留 v1.1 的 LINE 切割、main／tab 選擇、Preview、驗證與 ZIP 流程。
-- 未指定平台時仍預設輸出 LINE。
+- 新增 WeChat Export、平台化 exporter 與 LINE／WeChat 同時輸出。
+- 新增共用 Split → Trim → Safe Margin 圖片管線、Folder Import、Banner 探索及 WeChat Preview。
+- 新增微信 240×240 表情圖、750×400 Banner、240×240 cover、50×50 panel icon 與 PNG 最佳化。
 
 ### Changed
 
-- LINE 統一只輸出 `line_sticker.zip`，移除重複 ZIP。
-- WeChat ZIP 移除 `manifest.json`，並統一為 `wechat_sticker/` 純圖片結構。
-- WeChat Banner 改為手動路徑、已知檔名、±5% 比例的分級備援偵測，並支援 EXIF Orientation。
-- WeChat Export 對齊 240×240 表情圖、750×400 Banner、240×240 cover 與 50×50 panel icon 規格。
-- WeChat 加入 8～24 張數量驗證、素材檔案上限、PNG 最佳化與完整性狀態。
-- WeChat ZIP 統一為 `wechat_sticker.zip`，內容只保留實際上傳圖片。
+- LINE ZIP 統一為 `line_sticker.zip`，移除重複輸出。
+- WeChat ZIP 統一為 `wechat_sticker.zip`，只包含實際圖片素材。
+- 保留 v1.1 的 LINE 切圖、main／tab 選擇、Preview、驗證與 ZIP 流程。
+
+## [v1.1.0] — 2026-08-05
+
+### Added
+
+- Repository 的第一個可驗證版本與 initial release。
+- 將 4×4 PNG／JPG 合集平均切割為 16 張 LINE 貼圖。
+- 移除與邊界相連的近白或透明背景，等比例縮放、置中並保留安全留白。
+- 可分別選擇 `main.png` 與 `tab.png` 來源，並針對封面與小尺寸標籤輸出。
+- 新增 16 格 Preview、PNG／RGBA／尺寸／內容驗證、ZIP 打包及 macOS `build.command`。
+
+## v1.0
+
+Repository 中沒有可獨立驗證的 v1.0 Commit、Tag 或 GitHub Release。v1.1.0 README 僅記錄其保留「V1 相容」預設行為，因此不另行推測或拆分 v1.0 功能；可驗證的版本歷史從 v1.1.0 開始。
+
+[Unreleased]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.3...HEAD
+[v1.2.3]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.2...v1.2.3
+[v1.2.2]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.1...v1.2.2
+[v1.2.1]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.0...v1.2.1
+[v1.2.0]: https://github.com/saunter-lin/StickerToolkit/compare/v1.1.0...v1.2.0
+[v1.1.0]: https://github.com/saunter-lin/StickerToolkit/releases/tag/v1.1.0
