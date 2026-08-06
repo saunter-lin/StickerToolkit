@@ -22,6 +22,8 @@
 - CLI 與 Desktop 共用 `StickerService`、`ProcessingOptions`、`ProcessingResult`、進度 callback 與自訂例外。
 - 保留 v1.2.3 的圖片演算法、LINE／WeChat 素材、Preview 與 ZIP 結構。
 - macOS 封裝目前限定已驗證的 Apple Silicon `arm64`，並明確標示為未簽章、未公證測試建置。
+- macOS／Windows 封裝圖示改用透明外角的無標題簡化版本，移除 Dock 中的白色方形底板。
+- Desktop 自動輸出位置改為來源圖片同層的 `<來源檔名>_output`；手動選擇的位置具有優先權，且與自動建議分開保存。
 
 ### Pending
 

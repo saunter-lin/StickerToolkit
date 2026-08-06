@@ -35,6 +35,8 @@ PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
 
 桌面版目前可選擇來源圖片、LINE／微信／兩者、微信 Banner 與輸出目錄；支援 4×4 設定驗證、Preview／ZIP 選項、背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
 
+選擇來源圖片後，Desktop 會建議同層的 `<來源檔名>_output` 作為輸出根目錄，例如 `berry.png` 對應 `berry_output/`、`my.sticker.sheet.png` 對應 `my.sticker.sheet_output/`。在本次操作中手動按「選擇目錄」後，自訂位置優先，不會因重新選擇來源而被覆蓋；只有有效且由使用者手動選擇的目錄會由 QSettings 恢復。建議位置不可寫時會在開始處理前顯示錯誤，不會改用系統暫存目錄。
+
 桌面設定使用 Qt `QSettings`，macOS 通常保存於 `~/Library/Preferences/` 的 StickerToolkit 設定中。封裝版與原始碼版使用相同的處理核心；原始碼版需準備 Python 環境，封裝版則自帶 Python、Qt 與 Pillow。Log 位於：
 
 ```text
@@ -56,6 +58,8 @@ StickerToolkit-v<version>-macOS-<arch>.dmg
 開啟 DMG 後，將 `Sticker Toolkit.app` 拖到 `Applications` 捷徑，再從「應用程式」啟動。App 目前是 unsigned／未公證測試建置；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。專案不會宣稱已完成 Apple Developer 簽章或 notarization。
 
 Windows 封裝設定與 `.ico` 已備妥，但正式 EXE 必須在原生 Windows 10／11 環境建置與驗證；目前沒有可發布的 Windows 產物。
+
+封裝使用 `assets/app_icon_packaging.png`：外角透明、移除底部標題與副標題，保留貼圖格、魔法棒、星光與聊天氣泡。原始品牌圖仍保存在 `assets/app_icon.png`，不會被封裝流程覆蓋。
 
 ### 使用 input 資料夾
 

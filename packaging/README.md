@@ -34,3 +34,5 @@ packaging\build_windows.ps1 -Python .venv\Scripts\python
 ## 封裝範圍
 
 spec 會包含 PySide6／Qt plugins、Pillow、App Icon 與必要的 runtime 資源；不包含 tests、cache、logs、output、build、dist 或虛擬環境。`build/` 與 `dist/` 均為可重新產生且不提交 Git 的產物。
+
+原始品牌圖位於 `assets/app_icon.png`；封裝專用透明簡化圖位於 `assets/app_icon_packaging.png`，並衍生 `assets/icons/StickerToolkit.icns` 與 `assets/icons/StickerToolkit.ico`。重新建置 Icon 時不得覆蓋原始品牌圖。
