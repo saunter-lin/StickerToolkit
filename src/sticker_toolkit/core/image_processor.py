@@ -43,9 +43,18 @@ def contain(image: Image.Image, size: tuple[int, int], padding: int) -> Image.Im
 
 
 def build_shared_stickers(
-    source: Image.Image, size: tuple[int, int], padding: int
+    source: Image.Image,
+    size: tuple[int, int],
+    padding: int,
+    *,
+    remove_cell_edge_background: bool = True,
 ) -> list[Image.Image]:
     try:
-        return _build_shared_stickers(source, size, padding)
+        return _build_shared_stickers(
+            source,
+            size,
+            padding,
+            remove_cell_edge_background=remove_cell_edge_background,
+        )
     except StickerError as exc:
         raise ProcessingError(str(exc)) from exc

@@ -23,6 +23,10 @@ class ProcessingOptions:
     tab_index: int = 1
     wechat_cover_index: int = 1
     banner_path: Path | None = None
+    remove_solid_background: bool = False
+    auto_detect_solid_background: bool = True
+    solid_background_color: str = "#FFF8EC"
+    solid_background_tolerance: int = 3
 
 
 OptionsCallback = Callable[[ProcessingOptions, tuple[Path, ...]], ProcessingOptions]

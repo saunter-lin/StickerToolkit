@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
+from typing import cast
 
 from PySide6.QtCore import QSettings, QThread, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
+    QColorDialog,
     QComboBox,
     QFileDialog,
     QFormLayout,
@@ -29,7 +31,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from sticker_toolkit.core import ProcessingResult
+from sticker_toolkit.core import (
+    ProcessingResult,
+    color_to_hex,
+    detect_solid_background_color,
+    load_image,
+)
 from sticker_toolkit.version import __version__
 
 from .controllers import StickerController
@@ -66,14 +73,16 @@ class MainWindow(QMainWindow):
         self._worker: StickerWorker | None = None
         self._last_result: ProcessingResult | None = None
         self._output_user_selected = False
+        self._solid_background_color = "#FFF8EC"
         self._build_ui()
         self._restore_settings()
         self._update_banner_state()
+        self._update_background_state()
         self._refresh_start_enabled()
 
     def _build_ui(self) -> None:
         self.setWindowTitle(f"Sticker Toolkit {__version__}")
-        self.resize(760, 680)
+        self.resize(760, 790)
         root = QWidget(self)
         layout = QVBoxLayout(root)
         layout.setSpacing(12)
@@ -153,6 +162,38 @@ class MainWindow(QMainWindow):
         self.padding_checkbox.setEnabled(False)
         layout.addWidget(options_group)
 
+        self.background_group = QGroupBox("純色背景轉透明")
+        background_layout = QFormLayout(self.background_group)
+        self.remove_background_checkbox = QCheckBox("去除純色背景")
+        self.remove_background_checkbox.setToolTip(
+            "只移除與畫布外部連通的指定背景色，適合固定純色背景的貼圖合集；不是 AI 去背。"
+        )
+        self.auto_background_checkbox = QCheckBox("自動偵測背景色（推薦）")
+        self.auto_background_checkbox.setChecked(True)
+        self.background_color_label = QLabel("#FFF8EC")
+        self.background_color_button = QPushButton("選擇顏色")
+        color_row = QHBoxLayout()
+        color_row.addWidget(self.background_color_label)
+        color_row.addWidget(self.background_color_button)
+        color_row.addStretch(1)
+        color_widget = QWidget()
+        color_widget.setLayout(color_row)
+        self.background_tolerance_spin = QSpinBox()
+        self.background_tolerance_spin.setRange(0, 30)
+        self.background_tolerance_spin.setValue(3)
+        self.background_tolerance_spin.setToolTip(
+            "數值越高，越容易移除近似背景色，但也可能誤刪淺色細節。"
+            "純色 PNG 建議 3～5；JPEG 或有壓縮色差的圖片可使用 10～15。"
+        )
+        background_layout.addRow(self.remove_background_checkbox)
+        background_layout.addRow(self.auto_background_checkbox)
+        background_layout.addRow("背景色：", color_widget)
+        background_layout.addRow("容差：", self.background_tolerance_spin)
+        self.remove_background_checkbox.stateChanged.connect(self._update_background_state)
+        self.auto_background_checkbox.stateChanged.connect(self._update_background_state)
+        self.background_color_button.clicked.connect(self._choose_background_color)
+        layout.addWidget(self.background_group)
+
         self.start_button = QPushButton("開始處理")
         self.start_button.setMinimumHeight(38)
         self.start_button.clicked.connect(self._start_processing)
@@ -187,6 +228,19 @@ class MainWindow(QMainWindow):
         platform = str(self.settings.value("platform", "line"))
         index = self.platform_combo.findData(platform)
         self.platform_combo.setCurrentIndex(index if index >= 0 else 0)
+        self.remove_background_checkbox.setChecked(
+            cast(bool, self.settings.value("remove_solid_background", False, type=bool))
+        )
+        self.auto_background_checkbox.setChecked(
+            cast(bool, self.settings.value("auto_detect_solid_background", True, type=bool))
+        )
+        self.background_tolerance_spin.setValue(
+            int(str(self.settings.value("solid_background_tolerance", 3)))
+        )
+        self._solid_background_color = str(
+            self.settings.value("solid_background_color", "#FFF8EC")
+        ).upper()
+        self.background_color_label.setText(self._solid_background_color)
         mode = str(self.settings.value("output_directory_mode", ""))
         output = str(self.settings.value("last_manual_output_directory", ""))
         if mode == "manual" and output and Path(output).is_dir():
@@ -219,7 +273,44 @@ class MainWindow(QMainWindow):
         self.settings.setValue("last_source_directory", str(source.parent))
         if not self._output_user_selected:
             self.output_edit.setText(str(suggested_output_directory(source)))
+        self._refresh_detected_background_color()
         self._refresh_start_enabled()
+
+    @Slot()
+    def _choose_background_color(self) -> None:
+        selected = QColorDialog.getColor(parent=self, title="選擇純色背景")
+        if selected.isValid():
+            self._solid_background_color = selected.name().upper()
+            self.background_color_label.setText(self._solid_background_color)
+
+    def _refresh_detected_background_color(self) -> None:
+        if not (
+            self.remove_background_checkbox.isChecked()
+            and self.auto_background_checkbox.isChecked()
+            and self.source_edit.text()
+        ):
+            self.background_color_label.setText(self._solid_background_color)
+            return
+        try:
+            detected = detect_solid_background_color(
+                load_image(Path(self.source_edit.text()), "貼圖合集")
+            )
+        except Exception:  # UI 預覽失敗不阻止稍後的表單錯誤處理
+            logger.exception("Unable to preview the detected solid background color")
+            detected = None
+        if detected is None:
+            self.background_color_label.setText(f"未自動偵測；使用 {self._solid_background_color}")
+        else:
+            self.background_color_label.setText(f"偵測到背景色：{color_to_hex(detected)}")
+
+    @Slot()
+    def _update_background_state(self) -> None:
+        enabled = self.remove_background_checkbox.isChecked() and self._thread is None
+        automatic = self.auto_background_checkbox.isChecked()
+        self.auto_background_checkbox.setEnabled(enabled)
+        self.background_color_button.setEnabled(enabled and not automatic)
+        self.background_tolerance_spin.setEnabled(enabled)
+        self._refresh_detected_background_color()
 
     @Slot()
     def _choose_banner(self) -> None:
@@ -262,6 +353,10 @@ class MainWindow(QMainWindow):
             trim_enabled=self.trim_checkbox.isChecked(),
             create_preview=self.preview_checkbox.isChecked(),
             create_zip=self.zip_checkbox.isChecked(),
+            remove_solid_background=self.remove_background_checkbox.isChecked(),
+            auto_detect_solid_background=self.auto_background_checkbox.isChecked(),
+            solid_background_color=self._solid_background_color,
+            solid_background_tolerance=self.background_tolerance_spin.value(),
         )
 
     def _refresh_start_enabled(self) -> None:
@@ -310,11 +405,16 @@ class MainWindow(QMainWindow):
             self.output_button,
             self.preview_checkbox,
             self.zip_checkbox,
+            self.remove_background_checkbox,
+            self.auto_background_checkbox,
+            self.background_color_button,
+            self.background_tolerance_spin,
         ):
             widget.setEnabled(not processing)
         self.start_button.setEnabled(not processing and bool(self.source_edit.text()))
         if not processing:
             self._update_banner_state()
+            self._update_background_state()
 
     @Slot(int, str)
     def _on_progress(self, percent: int, message: str) -> None:
@@ -360,6 +460,16 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         self.settings.setValue("platform", self.platform_combo.currentData())
+        self.settings.setValue(
+            "remove_solid_background", self.remove_background_checkbox.isChecked()
+        )
+        self.settings.setValue(
+            "auto_detect_solid_background", self.auto_background_checkbox.isChecked()
+        )
+        self.settings.setValue("solid_background_color", self._solid_background_color)
+        self.settings.setValue(
+            "solid_background_tolerance", self.background_tolerance_spin.value()
+        )
         self.settings.setValue("window_geometry", self.saveGeometry())
         self.settings.sync()
         super().closeEvent(event)

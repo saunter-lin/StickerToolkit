@@ -2,6 +2,20 @@
 
 本文件依據 Repository 內的 Commit、annotated Tag、GitHub Release 與實際程式內容整理。
 
+## [v1.3.1] — 2026-08-07
+
+### Added
+
+- 新增可選的「純色背景轉透明」處理，在 4×4 切割前移除與整張畫布邊界連通的指定背景色。
+- 新增以角落小區塊中位數與邊界多數色為基礎的自動背景色偵測，並提供手動色碼備援。
+- Desktop GUI 新增啟用開關、自動偵測、實際偵測色碼、手動顏色選擇器及 0～30 容差設定。
+- 新增連通區域、封閉區域、白色描邊／毛髮、既有 Alpha、中文空格路徑與雙平台回歸測試。
+
+### Changed
+
+- 啟用純色背景處理時，共用管線改為讀取原圖後、切割前先產生透明 Alpha；切割後僅依 Alpha 裁除空白，以保留白色細節。
+- 預設容差為 `3`，且功能預設關閉，因此 v1.3.0 的既有處理與輸出規格維持不變。
+
 ## [v1.3.0] — 2026-08-06
 
 ### Added
@@ -89,3 +103,5 @@ Repository 中沒有可獨立驗證的 v1.0 Commit、Tag 或 GitHub Release。v1
 [v1.2.1]: https://github.com/saunter-lin/StickerToolkit/compare/v1.2.0...v1.2.1
 [v1.2.0]: https://github.com/saunter-lin/StickerToolkit/compare/v1.1.0...v1.2.0
 [v1.1.0]: https://github.com/saunter-lin/StickerToolkit/releases/tag/v1.1.0
+
+[v1.3.1]: https://github.com/saunter-lin/StickerToolkit/compare/v1.3.0...v1.3.1

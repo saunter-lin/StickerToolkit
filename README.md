@@ -1,8 +1,8 @@
-# Sticker Toolkit v1.3.0（macOS／Windows）
+# Sticker Toolkit v1.3.1（macOS／Windows）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
-版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3.0 是首個正式桌面版。
+版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3.1 在既有桌面版加入純色背景轉透明功能。
 
 ## 支援平台
 
@@ -19,7 +19,7 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 
 ### macOS（Apple Silicon）
 
-1. 下載 `StickerToolkit-v1.3.0-macOS-arm64.dmg`。
+1. 下載 `StickerToolkit-v1.3.1-macOS-arm64.dmg`。
 2. 開啟 DMG，將 `Sticker Toolkit.app` 拖曳至 `Applications`。
 3. 從「應用程式」啟動 Sticker Toolkit。
 
@@ -55,6 +55,7 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一�
 - 可選 LINE、WeChat 或兩者一起輸出
 - Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
 - 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
+- v1.3.1：可在切割前將與畫布外部連通的固定純色背景轉為透明 Alpha
 
 ## 輸出內容
 
@@ -105,6 +106,12 @@ output/
 ### WeChat 素材最佳化
 
 所有 PNG 先以 RGBA、`optimize=True` 與最高壓縮等級輸出。若仍超過上限，依序嘗試 256、128、64、32 色的最佳化 PNG；仍超限時停止匯出並顯示中文錯誤，不會把超規素材標示為成功。
+
+### 純色背景轉透明（v1.3.1）
+
+Sticker Toolkit 可在切割 4×4 合集前，從畫布邊界開始，只將與外部連通的指定純色轉為透明。這不是 AI 去背，最適合固定純色、無漸層、無陰影、無紋理的背景。
+
+推薦 AI 生圖時使用純色淺米黃色背景，例如 `#FFF8EC`，背景僅作為後續自動去背使用。功能預設關閉；啟用後預設自動偵測背景色，容差維持為 `3`。純色 PNG 建議使用 `3～5`；JPEG 或有壓縮色差的圖片可提高至 `10～15`。數值越高越可能影響淺色細節。複雜背景不保證效果；若原圖已是真正透明 PNG，無需啟用。
 
 ## Development
 
@@ -282,7 +289,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:
 
 ## 版本資訊
 
-目前版本：`v1.3.0`
+目前版本：`v1.3.1`
 
 詳見 [CHANGELOG.md](CHANGELOG.md)。
 

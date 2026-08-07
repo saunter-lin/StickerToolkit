@@ -11,6 +11,7 @@ from sticker_toolkit.core import (
     ProcessingOptions,
     ProcessingResult,
     StickerToolkitError,
+    parse_hex_color,
 )
 
 from .output_paths import output_directory_is_writable
@@ -27,6 +28,10 @@ class DesktopFormData:
     trim_enabled: bool = True
     create_preview: bool = True
     create_zip: bool = True
+    remove_solid_background: bool = False
+    auto_detect_solid_background: bool = True
+    solid_background_color: str = "#FFF8EC"
+    solid_background_tolerance: int = 3
 
 
 class DesktopValidationError(ValueError):
@@ -56,6 +61,13 @@ def validate_form(data: DesktopFormData) -> None:
         raise DesktopValidationError("輸出目錄無法寫入，請選擇其他位置。")
     if data.banner_path.strip() and not Path(data.banner_path).expanduser().is_file():
         raise DesktopValidationError("找不到微信 Banner 圖片，請重新選擇或清除。")
+    if not 0 <= data.solid_background_tolerance <= 30:
+        raise DesktopValidationError("純色背景容差必須介於 0～30。")
+    if data.remove_solid_background:
+        try:
+            parse_hex_color(data.solid_background_color)
+        except StickerToolkitError as exc:
+            raise DesktopValidationError(str(exc)) from exc
 
 
 def build_processing_options(data: DesktopFormData) -> ProcessingOptions:
@@ -70,6 +82,10 @@ def build_processing_options(data: DesktopFormData) -> ProcessingOptions:
         create_preview=data.create_preview,
         create_zip=data.create_zip,
         banner_path=banner,
+        remove_solid_background=data.remove_solid_background,
+        auto_detect_solid_background=data.auto_detect_solid_background,
+        solid_background_color=data.solid_background_color.upper(),
+        solid_background_tolerance=data.solid_background_tolerance,
     )
 
 

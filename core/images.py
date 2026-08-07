@@ -110,13 +110,18 @@ def split_grid(image: Image.Image) -> list[Image.Image]:
 
 
 def build_shared_stickers(
-    source: Image.Image, size: tuple[int, int], padding: int
+    source: Image.Image,
+    size: tuple[int, int],
+    padding: int,
+    *,
+    remove_cell_edge_background: bool = True,
 ) -> list[Image.Image]:
     """只執行一次 Split → Trim → Safe Margin。"""
     stickers: list[Image.Image] = []
     for index, cell in enumerate(split_grid(source), 1):
         try:
-            stickers.append(contain(remove_edge_background(cell), size, padding))
+            prepared = remove_edge_background(cell) if remove_cell_edge_background else cell.convert("RGBA")
+            stickers.append(contain(prepared, size, padding))
         except StickerError as exc:
             raise StickerError(f"第 {index:02d} 格處理失敗：{exc}") from exc
     if len(stickers) != EXPECTED_STICKERS:

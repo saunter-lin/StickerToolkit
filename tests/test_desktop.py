@@ -91,6 +91,26 @@ class DesktopViewModelTests(unittest.TestCase):
         self.assertFalse(options.create_preview)
         self.assertFalse(options.create_zip)
 
+    def test_form_builds_solid_background_options(self) -> None:
+        options = build_processing_options(
+            self.form(
+                remove_solid_background=True,
+                auto_detect_solid_background=False,
+                solid_background_color="#fff8ec",
+                solid_background_tolerance=5,
+            )
+        )
+        self.assertTrue(options.remove_solid_background)
+        self.assertFalse(options.auto_detect_solid_background)
+        self.assertEqual(options.solid_background_color, "#FFF8EC")
+        self.assertEqual(options.solid_background_tolerance, 5)
+
+    def test_background_tolerance_and_color_are_validated(self) -> None:
+        with self.assertRaisesRegex(DesktopValidationError, "0～30"):
+            build_processing_options(self.form(remove_solid_background=True, solid_background_tolerance=31))
+        with self.assertRaisesRegex(DesktopValidationError, "#RRGGBB"):
+            build_processing_options(self.form(remove_solid_background=True, solid_background_color="cream"))
+
     def test_output_directory_must_be_writable(self) -> None:
         with (
             patch(
@@ -225,6 +245,28 @@ class MainWindowStateTests(unittest.TestCase):
         QApplication.processEvents()
         if timed_out:
             self.fail("桌面 worker 未在期限內完成")
+
+    def test_background_controls_are_disabled_until_feature_is_checked(self) -> None:
+        self.assertFalse(self.window.remove_background_checkbox.isChecked())
+        self.assertFalse(self.window.auto_background_checkbox.isEnabled())
+        self.assertFalse(self.window.background_color_button.isEnabled())
+        self.assertFalse(self.window.background_tolerance_spin.isEnabled())
+        self.window.remove_background_checkbox.setChecked(True)
+        self.assertTrue(self.window.auto_background_checkbox.isEnabled())
+        self.assertFalse(self.window.background_color_button.isEnabled())
+        self.assertTrue(self.window.background_tolerance_spin.isEnabled())
+        self.window.auto_background_checkbox.setChecked(False)
+        self.assertTrue(self.window.background_color_button.isEnabled())
+
+    def test_source_selection_displays_detected_background_color(self) -> None:
+        source = Path(self.test_temp.name) / "純色 合集.png"
+        Image.new("RGB", (80, 80), (255, 248, 236)).save(source)
+        self.window.remove_background_checkbox.setChecked(True)
+        self.window._apply_source_path(source)
+        self.assertEqual(
+            self.window.background_color_label.text(),
+            "偵測到背景色：#FFF8EC",
+        )
 
     def test_start_disabled_without_source(self) -> None:
         self.assertFalse(self.window.start_button.isEnabled())

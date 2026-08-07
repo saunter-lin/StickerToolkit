@@ -8,6 +8,12 @@ from core.config import LINE_CONFIG
 from core.images import StickerError
 from core.paths import ProjectPaths
 from exporters.common import remove_directory
+from sticker_toolkit.core.background_alpha import (
+    detect_canvas_edge_color,
+    detect_solid_background_color,
+    parse_hex_color,
+    remove_connected_solid_background,
+)
 from sticker_toolkit.core.exceptions import (
     InvalidGridError,
     InvalidSourceImageError,
@@ -63,11 +69,34 @@ class StickerService:
         try:
             self._report(progress_callback, 10, "正在讀取圖片")
             source = load_image(source_path, "貼圖合集")
+            if options.remove_solid_background:
+                self._report(progress_callback, 20, "正在移除外部連通的純色背景")
+                detected = (
+                    detect_solid_background_color(source)
+                    if options.auto_detect_solid_background
+                    else None
+                )
+                background_color = detected or parse_hex_color(options.solid_background_color)
+                if detected is not None:
+                    edge_color = detect_canvas_edge_color(source)
+                    if edge_color is not None and edge_color != background_color:
+                        source = remove_connected_solid_background(
+                            source,
+                            edge_color,
+                            options.solid_background_tolerance,
+                        )
+                source = remove_connected_solid_background(
+                    source,
+                    background_color,
+                    options.solid_background_tolerance,
+                    grid_size=(options.rows, options.columns),
+                )
             self._report(progress_callback, 30, "正在切割與處理貼圖")
             stickers = build_shared_stickers(
                 source,
                 LINE_CONFIG.sticker_size,
                 LINE_CONFIG.sticker_padding,
+                remove_cell_edge_background=not options.remove_solid_background,
             )
             platform_keys = ("line", "wechat") if options.platform == "both" else (options.platform,)
             for key in platform_keys:

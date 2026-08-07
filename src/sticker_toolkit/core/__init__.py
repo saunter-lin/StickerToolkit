@@ -1,5 +1,16 @@
 """不依賴 UI 的圖片處理 Core 公開 API。"""
 
+from .background_alpha import (
+    DEFAULT_SOLID_BACKGROUND_COLOR,
+    DEFAULT_SOLID_BACKGROUND_TOLERANCE,
+    MAX_SOLID_BACKGROUND_TOLERANCE,
+    RGBColor,
+    color_to_hex,
+    detect_canvas_edge_color,
+    detect_solid_background_color,
+    parse_hex_color,
+    remove_connected_solid_background,
+)
 from .exceptions import (
     ExportError,
     InvalidGridError,
@@ -20,21 +31,30 @@ from .models import (
 from .sheet_splitter import split_grid
 
 __all__ = [
+    "DEFAULT_SOLID_BACKGROUND_COLOR",
+    "DEFAULT_SOLID_BACKGROUND_TOLERANCE",
     "ExportError",
     "InvalidGridError",
     "InvalidSourceImageError",
+    "MAX_SOLID_BACKGROUND_TOLERANCE",
     "OptionsCallback",
     "PlatformProcessingResult",
     "ProcessingError",
     "ProcessingOptions",
     "ProcessingResult",
     "ProgressCallback",
+    "RGBColor",
     "StickerToolkitError",
     "UnsupportedFormatError",
     "build_shared_stickers",
+    "color_to_hex",
     "contain",
     "crop_visible",
+    "detect_canvas_edge_color",
+    "detect_solid_background_color",
     "load_image",
+    "parse_hex_color",
+    "remove_connected_solid_background",
     "remove_edge_background",
     "split_grid",
 ]
