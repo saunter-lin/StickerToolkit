@@ -113,6 +113,20 @@ Sticker Toolkit 可在切割 4×4 合集前，從畫布邊界開始，只將與�
 
 推薦 AI 生圖時使用純色淺米黃色背景，例如 `#FFF8EC`，背景僅作為後續自動去背使用。功能預設關閉；啟用後預設自動偵測背景色，容差維持為 `3`。純色 PNG 建議使用 `3～5`；JPEG 或有壓縮色差的圖片可提高至 `10～15`。數值越高越可能影響淺色細節。複雜背景不保證效果；若原圖已是真正透明 PNG，無需啟用。
 
+AI 貼圖合集建議：
+
+- `#FFF8EC` 是推薦值，不是強制值；程式也可自動偵測其他平坦純色背景。
+- 背景應為單一純色，避免漸層、陰影、紋理或複雜背景。
+- 建議在角色與貼圖內容周圍加入白色描邊，並以清楚的 4×4 格線分隔 16 張貼圖。
+- 優先使用 PNG；純色 PNG tolerance 建議 `3–5`。
+- JPEG 可能產生背景色差，tolerance 建議 `10–15`，可從 `12` 開始嘗試。
+
+可直接提供給 AI 生圖的 Prompt 範例：
+
+```text
+Use a solid light cream background (#FFF8EC), with no gradients, shadows, or textures. The background is intended for automatic removal. Add a white outline around each sticker and clearly separate all stickers in a 4×4 grid.
+```
+
 ## Development
 
 以下內容僅供開發者、Contributor，以及需要自行修改原始碼的使用者。一般使用者請直接從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載 macOS DMG 或 Windows x64 ZIP。
