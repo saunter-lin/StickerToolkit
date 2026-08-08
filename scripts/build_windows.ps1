@@ -54,7 +54,7 @@ Invoke-Python $VenvPython @("-m", "pip", "install", "-e", ".[desktop,build]")
 $VersionOutput = & $VenvPython -c "from sticker_toolkit.version import __version__; print(__version__)"
 if ($LASTEXITCODE -ne 0) { throw "Unable to read project version." }
 $Version = ($VersionOutput | Select-Object -Last 1).Trim()
-if ($Version -notmatch '^\d+\.\d+\.\d+$') {
+if ($Version -notmatch '^\d+\.\d+\.\d+(?:-dev)?$') {
     throw "Invalid project version: $Version"
 }
 

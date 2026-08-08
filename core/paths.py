@@ -32,13 +32,13 @@ class ProjectPaths:
         return cls.from_output(project_root / "output")
 
     @classmethod
-    def from_output(cls, output_root: Path) -> ProjectPaths:
+    def from_output(cls, output_root: Path, *, wechat_directory_name: str = "wechat_sticker") -> ProjectPaths:
         preview_root = output_root / "preview"
         return cls(
             output=OutputPaths(
                 root=output_root,
                 line_directory=output_root / "line_sticker",
-                wechat_directory=output_root / "wechat_sticker",
+                wechat_directory=output_root / wechat_directory_name,
                 line_zip=output_root / "line_sticker.zip",
                 wechat_zip=output_root / "wechat_sticker.zip",
             ),

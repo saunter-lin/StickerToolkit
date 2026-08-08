@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased] — v1.3.2-dev
+
+### Added
+
+- 新增 WeChat 批次單圖模式，可直接多選、排序並處理 16 張 PNG／JPG／JPEG，不經拼圖或再次切割。
+- 批次來源逐張重用既有純色背景轉透明與 Alpha Trim，最後匯流至既有 WeChat exporter。
+- LINE main 與 WeChat cover 新增自動產生（預設）或自選圖片選項。
+
+### Compatibility
+
+- 整合圖模式、LINE／WeChat 輸出結構、Preview、ZIP 與 v1.3.1 預設行為維持不變。
+
 本文件依據 Repository 內的 Commit、annotated Tag、GitHub Release 與實際程式內容整理。
 
 ## [v1.3.1] — 2026-08-07

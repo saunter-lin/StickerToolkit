@@ -26,9 +26,9 @@ if version_match is None:
     raise RuntimeError(f"Unable to read application version from {version_source}")
 
 application_version = version_match.group(1)
-release_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", application_version)
+release_match = re.match(r"(\d+)\.(\d+)\.(\d+)", application_version)
 if release_match is None:
-    raise RuntimeError(f"Windows packaging requires an X.Y.Z version: {application_version}")
+    raise RuntimeError(f"Windows packaging requires an X.Y.Z version prefix: {application_version}")
 version_tuple = tuple(int(part) for part in release_match.groups()) + (0,)
 
 entry_point = project_root / "packaging" / "desktop_entry.py"

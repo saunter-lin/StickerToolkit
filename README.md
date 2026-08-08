@@ -1,8 +1,8 @@
-# Sticker Toolkit v1.3.1（macOS／Windows）
+# Sticker Toolkit v1.3.2-dev（macOS／Windows）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
-版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。v1.3.1 在既有桌面版加入純色背景轉透明功能。
+版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。目前開發版本為 v1.3.2-dev；最新正式安裝包仍為 v1.3.1。
 
 ## 支援平台
 
@@ -56,6 +56,14 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一�
 - Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
 - 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
 - v1.3.1：可在切割前將與畫布外部連通的固定純色背景轉為透明 Alpha
+- v1.3.2-dev：新增 WeChat 批次單圖模式，可直接依 GUI 順序處理 16 張 PNG／JPG
+- LINE main 與 WeChat cover 可維持自動產生，或選用自訂 PNG／JPG／JPEG 封面
+
+### WeChat 批次單圖（v1.3.2-dev）
+
+桌面版可直接選擇 16 張獨立 PNG／JPG／JPEG，依清單順序上移或下移後，批次套用既有背景透明化與 Normalize 管線，再交由同一套 WeChat exporter 輸出 `01.png`～`16.png`、Banner、cover、panel icon、Preview 與 ZIP。此模式適合逐張 AI 生圖工作流，且必須另外選擇 Banner；輸出素材目錄使用 `{banner_stem}_wechat_sticker`。
+
+LINE 與 WeChat 封面預設仍為自動產生；需要時可切換為自選圖片，程式會等比例 fit 至既有平台規格，不會拉伸。
 
 ## 輸出內容
 
@@ -146,7 +154,7 @@ python3 -m venv .venv
 PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
 ```
 
-桌面版可選擇來源圖片、LINE／微信／兩者、微信 Banner 與輸出目錄；支援背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
+桌面版可選擇整合圖或 WeChat 批次單圖、LINE／微信／兩者、微信 Banner、自動或自選封面與輸出目錄；支援背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
 
 ![Sticker Toolkit v1.3.0 Desktop GUI](docs/images/sticker-toolkit-v1.3.png)
 
@@ -303,7 +311,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:
 
 ## 版本資訊
 
-目前版本：`v1.3.1`
+目前開發版本：`v1.3.2-dev`（最新正式發布版：`v1.3.1`）
 
 詳見 [CHANGELOG.md](CHANGELOG.md)。
 

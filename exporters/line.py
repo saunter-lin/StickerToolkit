@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from core.config import LINE_CONFIG
-from core.images import StickerError, contain
+from core.images import StickerError, contain, load_image
 from core.paths import OutputPaths
 
 from .common import clean_directory, remove_file, save_rgba_png, validate_png, write_zip
@@ -15,7 +15,13 @@ from .common import clean_directory, remove_file, save_rgba_png, validate_png, w
 OLD_LINE_ZIP_NAMES = ("line_sticker_package.zip", "line_stickers.zip")
 
 
-def export_line(stickers: list[Image.Image], paths: OutputPaths, main_index: int, tab_index: int) -> Path:
+def export_line(
+    stickers: list[Image.Image],
+    paths: OutputPaths,
+    main_index: int,
+    tab_index: int,
+    main_source_path: Path | None = None,
+) -> Path:
     if LINE_CONFIG.main_size is None or LINE_CONFIG.tab_size is None:
         raise RuntimeError("LINE_CONFIG 缺少 main 或 tab 尺寸。")
     clean_directory(paths.line_directory, "LINE 輸出")
@@ -35,16 +41,18 @@ def export_line(stickers: list[Image.Image], paths: OutputPaths, main_index: int
         sticker_paths.append(path)
     main_path = paths.line_directory / "main.png"
     tab_path = paths.line_directory / "tab.png"
-    main_image = contain(stickers[main_index - 1], LINE_CONFIG.main_size, LINE_CONFIG.main_padding)
+    main_source = (
+        load_image(main_source_path, "LINE 自選封面")
+        if main_source_path is not None
+        else stickers[main_index - 1]
+    )
+    main_image = contain(main_source, LINE_CONFIG.main_size, LINE_CONFIG.main_padding)
     save_rgba_png(main_image, main_path)
     save_rgba_png(contain(stickers[tab_index - 1], LINE_CONFIG.tab_size, LINE_CONFIG.tab_padding), tab_path)
     validate_png(main_path, LINE_CONFIG.main_size)
     validate_png(tab_path, LINE_CONFIG.tab_size)
     zip_path = paths.line_zip
-    entries = [
-        (path, f"line_sticker/{path.name}")
-        for path in [*sticker_paths, main_path, tab_path]
-    ]
+    entries = [(path, f"line_sticker/{path.name}") for path in [*sticker_paths, main_path, tab_path]]
     for old_name in OLD_LINE_ZIP_NAMES:
         old_path = paths.root / old_name
         try:

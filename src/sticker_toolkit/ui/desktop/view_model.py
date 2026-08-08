@@ -25,6 +25,10 @@ class DesktopFormData:
     columns: int
     banner_path: str
     output_directory: str
+    input_mode: str = "sheet"
+    batch_source_paths: tuple[str, ...] = ()
+    line_cover_path: str = ""
+    wechat_cover_path: str = ""
     trim_enabled: bool = True
     create_preview: bool = True
     create_zip: bool = True
@@ -43,7 +47,20 @@ def banner_enabled(platform: str) -> bool:
 
 
 def validate_form(data: DesktopFormData) -> None:
-    if not data.source_path.strip():
+    if data.input_mode not in {"sheet", "wechat_batch"}:
+        raise DesktopValidationError("請選擇有效的輸入模式。")
+    if data.input_mode == "wechat_batch":
+        count = len(data.batch_source_paths)
+        if count != 16:
+            raise DesktopValidationError(f"WeChat 批次單圖必須選擇 16 張，目前為 {count} 張。")
+        if data.platform != "wechat":
+            raise DesktopValidationError("WeChat 批次單圖模式僅支援微信輸出。")
+        if not data.banner_path.strip():
+            raise DesktopValidationError("WeChat 批次單圖模式必須選擇 Banner。")
+        missing = [path for path in data.batch_source_paths if not Path(path).expanduser().is_file()]
+        if missing:
+            raise DesktopValidationError(f"找不到批次圖片：{Path(missing[0]).name}")
+    elif not data.source_path.strip():
         raise DesktopValidationError("請先選擇來源圖片。")
     if data.platform not in {"line", "wechat", "both"}:
         raise DesktopValidationError("請選擇 LINE、微信或 LINE＋微信。")
@@ -61,6 +78,9 @@ def validate_form(data: DesktopFormData) -> None:
         raise DesktopValidationError("輸出目錄無法寫入，請選擇其他位置。")
     if data.banner_path.strip() and not Path(data.banner_path).expanduser().is_file():
         raise DesktopValidationError("找不到微信 Banner 圖片，請重新選擇或清除。")
+    for label, cover_path in (("LINE 封面", data.line_cover_path), ("WeChat 封面", data.wechat_cover_path)):
+        if cover_path.strip() and not Path(cover_path).expanduser().is_file():
+            raise DesktopValidationError(f"找不到{label}圖片，請重新選擇或清除。")
     if not 0 <= data.solid_background_tolerance <= 30:
         raise DesktopValidationError("純色背景容差必須介於 0～30。")
     if data.remove_solid_background:
@@ -73,7 +93,13 @@ def validate_form(data: DesktopFormData) -> None:
 def build_processing_options(data: DesktopFormData) -> ProcessingOptions:
     validate_form(data)
     banner = Path(data.banner_path).expanduser().resolve() if data.banner_path.strip() else None
+    line_cover = Path(data.line_cover_path).expanduser().resolve() if data.line_cover_path.strip() else None
+    wechat_cover = (
+        Path(data.wechat_cover_path).expanduser().resolve() if data.wechat_cover_path.strip() else None
+    )
     return ProcessingOptions(
+        input_mode=data.input_mode,
+        batch_source_paths=tuple(Path(path).expanduser().resolve() for path in data.batch_source_paths),
         platform=data.platform,
         rows=data.rows,
         columns=data.columns,
@@ -82,6 +108,8 @@ def build_processing_options(data: DesktopFormData) -> ProcessingOptions:
         create_preview=data.create_preview,
         create_zip=data.create_zip,
         banner_path=banner,
+        line_cover_path=line_cover,
+        wechat_cover_path=wechat_cover,
         remove_solid_background=data.remove_solid_background,
         auto_detect_solid_background=data.auto_detect_solid_background,
         solid_background_color=data.solid_background_color.upper(),

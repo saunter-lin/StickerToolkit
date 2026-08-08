@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
@@ -74,15 +75,25 @@ class MainWindow(QMainWindow):
         self._last_result: ProcessingResult | None = None
         self._output_user_selected = False
         self._solid_background_color = "#FFF8EC"
+        self._batch_source_paths: list[Path] = []
+        self._last_input_mode = "sheet"
+        self.line_cover_mode_combo: QComboBox
+        self.line_cover_edit: QLineEdit
+        self.line_cover_button: QPushButton
+        self.wechat_cover_mode_combo: QComboBox
+        self.wechat_cover_edit: QLineEdit
+        self.wechat_cover_button: QPushButton
         self._build_ui()
         self._restore_settings()
+        self._update_input_mode()
         self._update_banner_state()
+        self._update_cover_state()
         self._update_background_state()
         self._refresh_start_enabled()
 
     def _build_ui(self) -> None:
         self.setWindowTitle(f"Sticker Toolkit {__version__}")
-        self.resize(760, 790)
+        self.resize(800, 980)
         root = QWidget(self)
         layout = QVBoxLayout(root)
         layout.setSpacing(12)
@@ -92,13 +103,38 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 22px; font-weight: 600;")
         layout.addWidget(title)
 
+        mode_group = QGroupBox("輸入模式")
+        mode_layout = QFormLayout(mode_group)
+        self.input_mode_combo = QComboBox()
+        self.input_mode_combo.addItem("整合圖", "sheet")
+        self.input_mode_combo.addItem("WeChat 批次單圖", "wechat_batch")
+        self.input_mode_combo.currentIndexChanged.connect(self._update_input_mode)
+        mode_layout.addRow("模式：", self.input_mode_combo)
+        layout.addWidget(mode_group)
+
         source_group = QGroupBox("來源圖片")
-        source_layout = QHBoxLayout(source_group)
+        source_layout = QVBoxLayout(source_group)
+        source_row = QHBoxLayout()
         self.source_edit = self._path_edit("尚未選擇來源圖片")
         self.source_button = QPushButton("選擇圖片")
         self.source_button.clicked.connect(self._choose_source)
-        source_layout.addWidget(self.source_edit, 1)
-        source_layout.addWidget(self.source_button)
+        source_row.addWidget(self.source_edit, 1)
+        source_row.addWidget(self.source_button)
+        source_layout.addLayout(source_row)
+        self.batch_count_label = QLabel("已選擇 0 / 16 張")
+        self.batch_list = QListWidget()
+        self.batch_list.setMaximumHeight(150)
+        batch_buttons = QHBoxLayout()
+        self.batch_up_button = QPushButton("↑ 上移")
+        self.batch_down_button = QPushButton("↓ 下移")
+        self.batch_up_button.clicked.connect(lambda: self._move_batch_item(-1))
+        self.batch_down_button.clicked.connect(lambda: self._move_batch_item(1))
+        batch_buttons.addWidget(self.batch_count_label)
+        batch_buttons.addStretch(1)
+        batch_buttons.addWidget(self.batch_up_button)
+        batch_buttons.addWidget(self.batch_down_button)
+        source_layout.addWidget(self.batch_list)
+        source_layout.addLayout(batch_buttons)
         layout.addWidget(source_group)
 
         platform_group = QGroupBox("輸出平台")
@@ -109,6 +145,11 @@ class MainWindow(QMainWindow):
         self.platform_combo.currentIndexChanged.connect(self._update_banner_state)
         platform_layout.addRow("平台：", self.platform_combo)
         layout.addWidget(platform_group)
+
+        self.line_cover_group = self._build_cover_group("LINE 封面圖片", "line")
+        self.wechat_cover_group = self._build_cover_group("WeChat 封面圖片", "wechat")
+        layout.addWidget(self.line_cover_group)
+        layout.addWidget(self.wechat_cover_group)
 
         grid_group = QGroupBox("圖片切割設定")
         grid_layout = QGridLayout(grid_group)
@@ -129,7 +170,7 @@ class MainWindow(QMainWindow):
         self.banner_button = QPushButton("選擇")
         self.banner_clear_button = QPushButton("清除")
         self.banner_button.clicked.connect(self._choose_banner)
-        self.banner_clear_button.clicked.connect(self.banner_edit.clear)
+        self.banner_clear_button.clicked.connect(self._clear_banner)
         banner_layout.addWidget(self.banner_edit, 1)
         banner_layout.addWidget(self.banner_button)
         banner_layout.addWidget(self.banner_clear_button)
@@ -216,6 +257,24 @@ class MainWindow(QMainWindow):
         self.open_output_button.clicked.connect(self._open_output)
         layout.addWidget(self.open_output_button)
 
+    def _build_cover_group(self, title: str, key: str) -> QGroupBox:
+        group = QGroupBox(title)
+        layout = QHBoxLayout(group)
+        mode = QComboBox()
+        mode.addItem("自動產生", "auto")
+        mode.addItem("自選圖片", "custom")
+        edit = self._path_edit("自動產生")
+        button = QPushButton("選擇")
+        setattr(self, f"{key}_cover_mode_combo", mode)
+        setattr(self, f"{key}_cover_edit", edit)
+        setattr(self, f"{key}_cover_button", button)
+        mode.currentIndexChanged.connect(self._update_cover_state)
+        button.clicked.connect(lambda _checked=False, name=key: self._choose_cover(name))
+        layout.addWidget(mode)
+        layout.addWidget(edit, 1)
+        layout.addWidget(button)
+        return group
+
     @staticmethod
     def _path_edit(placeholder: str) -> QLineEdit:
         edit = QLineEdit()
@@ -225,6 +284,9 @@ class MainWindow(QMainWindow):
         return edit
 
     def _restore_settings(self) -> None:
+        input_mode = str(self.settings.value("input_mode", "sheet"))
+        mode_index = self.input_mode_combo.findData(input_mode)
+        self.input_mode_combo.setCurrentIndex(mode_index if mode_index >= 0 else 0)
         platform = str(self.settings.value("platform", "line"))
         index = self.platform_combo.findData(platform)
         self.platform_combo.setCurrentIndex(index if index >= 0 else 0)
@@ -237,9 +299,7 @@ class MainWindow(QMainWindow):
         self.background_tolerance_spin.setValue(
             int(str(self.settings.value("solid_background_tolerance", 3)))
         )
-        self._solid_background_color = str(
-            self.settings.value("solid_background_color", "#FFF8EC")
-        ).upper()
+        self._solid_background_color = str(self.settings.value("solid_background_color", "#FFF8EC")).upper()
         self.background_color_label.setText(self._solid_background_color)
         mode = str(self.settings.value("output_directory_mode", ""))
         output = str(self.settings.value("last_manual_output_directory", ""))
@@ -256,16 +316,90 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _choose_source(self) -> None:
+        if self.input_mode_combo.currentData() == "wechat_batch":
+            paths, _ = QFileDialog.getOpenFileNames(
+                self,
+                "選擇 16 張 WeChat 貼圖",
+                self._dialog_directory("last_source_directory"),
+                "圖片 (*.png *.jpg *.jpeg)",
+            )
+            if paths:
+                self._apply_batch_source_paths([Path(path) for path in paths])
+                if len(paths) != 16:
+                    QMessageBox.warning(
+                        self,
+                        "圖片數量不正確",
+                        f"WeChat 批次單圖必須選擇 16 張，目前為 {len(paths)} 張，請重新選擇。",
+                    )
+            return
         path, _ = QFileDialog.getOpenFileName(
             self,
             "選擇貼圖合集",
             self._dialog_directory("last_source_directory"),
             "圖片 (*.png *.jpg *.jpeg *.webp)",
         )
-        if not path:
+        if path:
+            self._apply_source_path(Path(path))
+
+    def _apply_batch_source_paths(self, paths: list[Path]) -> None:
+        self._batch_source_paths = list(paths)
+        self.batch_list.clear()
+        for index, path in enumerate(paths, 1):
+            self.batch_list.addItem(f"{index:02d}  {path.name}")
+        self.batch_count_label.setText(f"已選擇 {len(paths)} / 16 張")
+        self.source_edit.setText(str(paths[0]) if paths else "")
+        if paths:
+            self.settings.setValue("last_source_directory", str(paths[0].parent))
+            if not self._output_user_selected:
+                self.output_edit.setText(str(suggested_output_directory(paths[0])))
+        self._refresh_detected_background_color()
+        self._refresh_start_enabled()
+
+    def _move_batch_item(self, offset: int) -> None:
+        row = self.batch_list.currentRow()
+        target = row + offset
+        if row < 0 or target < 0 or target >= len(self._batch_source_paths):
             return
-        source = Path(path)
-        self._apply_source_path(source)
+        self._batch_source_paths[row], self._batch_source_paths[target] = (
+            self._batch_source_paths[target],
+            self._batch_source_paths[row],
+        )
+        self._apply_batch_source_paths(self._batch_source_paths.copy())
+        self.batch_list.setCurrentRow(target)
+
+    @Slot()
+    def _update_input_mode(self) -> None:
+        if not hasattr(self, "batch_list"):
+            return
+        mode = str(self.input_mode_combo.currentData() or "sheet")
+        changed = mode != self._last_input_mode
+        self._last_input_mode = mode
+        batch = mode == "wechat_batch"
+        for widget in (self.batch_list, self.batch_count_label, self.batch_up_button, self.batch_down_button):
+            widget.setVisible(batch)
+        self.source_edit.setVisible(not batch)
+        self.source_button.setText("選擇 16 張圖片" if batch else "選擇圖片")
+        self.rows_spin.setEnabled(not batch and self._thread is None)
+        self.columns_spin.setEnabled(not batch and self._thread is None)
+        if batch:
+            index = self.platform_combo.findData("wechat")
+            self.platform_combo.setCurrentIndex(index)
+            self.platform_combo.setEnabled(False)
+            self.source_edit.setText(str(self._batch_source_paths[0]) if self._batch_source_paths else "")
+            if not self._batch_source_paths and not self._output_user_selected:
+                self.output_edit.clear()
+        else:
+            self.platform_combo.setEnabled(self._thread is None)
+            if changed:
+                self._batch_source_paths = []
+                self.batch_list.clear()
+                self.batch_count_label.setText("已選擇 0 / 16 張")
+                self.source_edit.clear()
+                if not self._output_user_selected:
+                    self.output_edit.clear()
+        self._update_banner_state()
+        self._update_cover_state()
+        self._refresh_start_enabled()
 
     def _apply_source_path(self, source: Path) -> None:
         """Apply a selected source and refresh only an automatic output suggestion."""
@@ -292,9 +426,7 @@ class MainWindow(QMainWindow):
             self.background_color_label.setText(self._solid_background_color)
             return
         try:
-            detected = detect_solid_background_color(
-                load_image(Path(self.source_edit.text()), "貼圖合集")
-            )
+            detected = detect_solid_background_color(load_image(Path(self.source_edit.text()), "貼圖合集"))
         except Exception:  # UI 預覽失敗不阻止稍後的表單錯誤處理
             logger.exception("Unable to preview the detected solid background color")
             detected = None
@@ -313,6 +445,40 @@ class MainWindow(QMainWindow):
         self._refresh_detected_background_color()
 
     @Slot()
+    def _choose_cover(self, key: str) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "選擇封面圖片",
+            self._dialog_directory("last_source_directory"),
+            "圖片 (*.png *.jpg *.jpeg)",
+        )
+        if path:
+            getattr(self, f"{key}_cover_edit").setText(path)
+            self._refresh_start_enabled()
+
+    @Slot()
+    def _update_cover_state(self) -> None:
+        if not hasattr(self, "line_cover_group"):
+            return
+        platform = str(self.platform_combo.currentData())
+        processing = self._thread is not None
+        for key, enabled in (
+            ("line", platform in {"line", "both"}),
+            ("wechat", platform in {"wechat", "both"}),
+        ):
+            group = getattr(self, f"{key}_cover_group")
+            mode = getattr(self, f"{key}_cover_mode_combo")
+            edit = getattr(self, f"{key}_cover_edit")
+            button = getattr(self, f"{key}_cover_button")
+            group.setEnabled(enabled and not processing)
+            custom = mode.currentData() == "custom"
+            button.setEnabled(enabled and custom and not processing)
+            edit.setPlaceholderText("請選擇封面圖片" if custom else "自動產生")
+            if not custom:
+                edit.clear()
+        self._refresh_start_enabled()
+
+    @Slot()
     def _choose_banner(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self,
@@ -322,6 +488,12 @@ class MainWindow(QMainWindow):
         )
         if path:
             self.banner_edit.setText(path)
+            self._refresh_start_enabled()
+
+    @Slot()
+    def _clear_banner(self) -> None:
+        self.banner_edit.clear()
+        self._refresh_start_enabled()
 
     @Slot()
     def _choose_output(self) -> None:
@@ -340,16 +512,21 @@ class MainWindow(QMainWindow):
     def _update_banner_state(self) -> None:
         enabled = banner_enabled(str(self.platform_combo.currentData())) and self._thread is None
         self.banner_group.setEnabled(enabled)
+        self._update_cover_state()
         self._refresh_start_enabled()
 
     def _form_data(self) -> DesktopFormData:
         return DesktopFormData(
             source_path=self.source_edit.text(),
+            input_mode=str(self.input_mode_combo.currentData() or "sheet"),
+            batch_source_paths=tuple(str(path) for path in self._batch_source_paths),
             platform=str(self.platform_combo.currentData() or ""),
             rows=self.rows_spin.value(),
             columns=self.columns_spin.value(),
             banner_path=self.banner_edit.text(),
             output_directory=self.output_edit.text(),
+            line_cover_path=self.line_cover_edit.text(),
+            wechat_cover_path=self.wechat_cover_edit.text(),
             trim_enabled=self.trim_checkbox.isChecked(),
             create_preview=self.preview_checkbox.isChecked(),
             create_zip=self.zip_checkbox.isChecked(),
@@ -362,7 +539,20 @@ class MainWindow(QMainWindow):
     def _refresh_start_enabled(self) -> None:
         if not hasattr(self, "start_button"):
             return
+        batch = self.input_mode_combo.currentData() == "wechat_batch"
         ready = bool(self.source_edit.text() and self.platform_combo.currentData())
+        if batch:
+            ready = len(self._batch_source_paths) == 16 and bool(self.banner_edit.text())
+        if self.line_cover_mode_combo.currentData() == "custom" and self.platform_combo.currentData() in {
+            "line",
+            "both",
+        }:
+            ready = ready and bool(self.line_cover_edit.text())
+        if self.wechat_cover_mode_combo.currentData() == "custom" and self.platform_combo.currentData() in {
+            "wechat",
+            "both",
+        }:
+            ready = ready and bool(self.wechat_cover_edit.text())
         self.start_button.setEnabled(ready and self._thread is None)
 
     @Slot()
@@ -372,6 +562,7 @@ class MainWindow(QMainWindow):
         except DesktopValidationError as exc:
             QMessageBox.warning(self, "輸入資料不完整", str(exc))
             return
+        self.settings.setValue("input_mode", options.input_mode)
         self.settings.setValue("platform", options.platform)
         self.progress_bar.setValue(0)
         self.status_label.setText("正在啟動處理…")
@@ -397,6 +588,9 @@ class MainWindow(QMainWindow):
     def _set_processing(self, processing: bool) -> None:
         for widget in (
             self.source_button,
+            self.input_mode_combo,
+            self.batch_up_button,
+            self.batch_down_button,
             self.platform_combo,
             self.rows_spin,
             self.columns_spin,
@@ -409,11 +603,17 @@ class MainWindow(QMainWindow):
             self.auto_background_checkbox,
             self.background_color_button,
             self.background_tolerance_spin,
+            self.line_cover_mode_combo,
+            self.line_cover_button,
+            self.wechat_cover_mode_combo,
+            self.wechat_cover_button,
         ):
             widget.setEnabled(not processing)
         self.start_button.setEnabled(not processing and bool(self.source_edit.text()))
         if not processing:
+            self._update_input_mode()
             self._update_banner_state()
+            self._update_cover_state()
             self._update_background_state()
 
     @Slot(int, str)
@@ -459,17 +659,12 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "處理進行中", "請等待目前的圖片處理完成。")
             event.ignore()
             return
+        self.settings.setValue("input_mode", self.input_mode_combo.currentData())
         self.settings.setValue("platform", self.platform_combo.currentData())
-        self.settings.setValue(
-            "remove_solid_background", self.remove_background_checkbox.isChecked()
-        )
-        self.settings.setValue(
-            "auto_detect_solid_background", self.auto_background_checkbox.isChecked()
-        )
+        self.settings.setValue("remove_solid_background", self.remove_background_checkbox.isChecked())
+        self.settings.setValue("auto_detect_solid_background", self.auto_background_checkbox.isChecked())
         self.settings.setValue("solid_background_color", self._solid_background_color)
-        self.settings.setValue(
-            "solid_background_tolerance", self.background_tolerance_spin.value()
-        )
+        self.settings.setValue("solid_background_tolerance", self.background_tolerance_spin.value())
         self.settings.setValue("window_geometry", self.saveGeometry())
         self.settings.sync()
         super().closeEvent(event)

@@ -19,7 +19,13 @@ def sticker_files(directory: Path, count: int) -> tuple[Path, ...]:
 def export_line_result(
     stickers: list[Image.Image], paths: OutputPaths, options: ProcessingOptions
 ) -> PlatformProcessingResult:
-    created_zip = export_line(stickers, paths, options.main_index, options.tab_index)
+    created_zip = export_line(
+        stickers,
+        paths,
+        options.main_index,
+        options.tab_index,
+        options.line_cover_path,
+    )
     zip_file: Path | None = created_zip
     if not options.create_zip:
         created_zip.unlink(missing_ok=True)
@@ -42,6 +48,7 @@ def export_wechat_result(
         paths,
         options.banner_path,
         options.wechat_cover_index,
+        options.wechat_cover_path,
     )
     zip_file: Path | None = exported.zip_path
     if not options.create_zip:

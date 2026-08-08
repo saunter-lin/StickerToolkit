@@ -67,6 +67,7 @@ def export_wechat(
     paths: OutputPaths,
     banner_path: Path | None,
     cover_index: int = 1,
+    cover_source_path: Path | None = None,
 ) -> WechatExportResult:
     validate_sticker_count(len(stickers))
     if not 1 <= cover_index <= len(stickers):
@@ -78,7 +79,12 @@ def export_wechat(
     sticker_paths, entries = _save_stickers(stickers, staging)
 
     cover_path = staging / "cover.png"
-    cover = contain(stickers[cover_index - 1], WECHAT_CONFIG.cover_size, WECHAT_CONFIG.cover_padding)
+    cover_source = (
+        load_image(cover_source_path, "WeChat 自選封面")
+        if cover_source_path is not None
+        else stickers[cover_index - 1]
+    )
+    cover = contain(cover_source, WECHAT_CONFIG.cover_size, WECHAT_CONFIG.cover_padding)
     save_optimized_png(
         cover,
         cover_path,
@@ -123,8 +129,7 @@ def export_wechat(
     cover_limit_kb = WECHAT_CONFIG.cover_max_bytes // 1024
     panel_limit_kb = WECHAT_CONFIG.panel_icon_max_bytes // 1024
     sticker_size_parts = [
-        f"{index:02d}={path.stat().st_size / 1024:.1f}KB"
-        for index, path in enumerate(sticker_paths, 1)
+        f"{index:02d}={path.stat().st_size / 1024:.1f}KB" for index, path in enumerate(sticker_paths, 1)
     ]
     sticker_size_messages = [
         "表情圖大小：" + "、".join(sticker_size_parts[start : start + 4])

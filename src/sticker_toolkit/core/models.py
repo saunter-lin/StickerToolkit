@@ -27,6 +27,10 @@ class ProcessingOptions:
     auto_detect_solid_background: bool = True
     solid_background_color: str = "#FFF8EC"
     solid_background_tolerance: int = 3
+    input_mode: str = "sheet"
+    batch_source_paths: tuple[Path, ...] = ()
+    line_cover_path: Path | None = None
+    wechat_cover_path: Path | None = None
 
 
 OptionsCallback = Callable[[ProcessingOptions, tuple[Path, ...]], ProcessingOptions]
