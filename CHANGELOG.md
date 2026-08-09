@@ -1,12 +1,16 @@
 # Changelog
 
-## [Unreleased] — v1.3.2-dev
+## [v1.3.2] — 2026-08-09
 
 ### Added
 
 - 新增 WeChat 批次單圖模式，可直接多選、排序並處理 16 張 PNG／JPG／JPEG，不經拼圖或再次切割。
 - 批次來源逐張重用既有純色背景轉透明與 Alpha Trim，最後匯流至既有 WeChat exporter。
 - LINE main 與 WeChat cover 新增自動產生（預設）或自選圖片選項。
+
+### Changed
+
+- Desktop 採用原生 Qt QScrollArea；內容維持 1080 px 最大寬度與水平置中，視窗高度不足時提供垂直捲動。
 
 ### Compatibility
 
