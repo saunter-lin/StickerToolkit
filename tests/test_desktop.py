@@ -213,8 +213,19 @@ class MainWindowStateTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.settings_temp.cleanup()
 
+    @staticmethod
+    def _clear_desktop_settings() -> None:
+        settings = QSettings(
+            QSettings.Format.IniFormat,
+            QSettings.Scope.UserScope,
+            "StickerToolkit",
+            "StickerToolkit",
+        )
+        settings.clear()
+        settings.sync()
+
     def setUp(self) -> None:
-        QSettings("StickerToolkit", "StickerToolkit").clear()
+        self._clear_desktop_settings()
         self.window = MainWindow()
         self.test_temp = tempfile.TemporaryDirectory()
 
@@ -225,6 +236,8 @@ class MainWindowStateTests(unittest.TestCase):
             self.window._thread = None
         with patch.object(QMessageBox, "information"):
             self.window.close()
+        self.window.settings.clear()
+        self.window.settings.sync()
         self.test_temp.cleanup()
 
     def wait_for_worker(self) -> None:
