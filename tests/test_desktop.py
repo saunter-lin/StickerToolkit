@@ -294,6 +294,45 @@ class MainWindowStateTests(unittest.TestCase):
             with patch.object(QMessageBox, "information"):
                 windows_window.close()
 
+    def test_wide_window_centers_bounded_content_and_keeps_grid_compact(self) -> None:
+        self.window.resize(1920, 1080)
+        self.window.show()
+        QApplication.processEvents()
+
+        central_width = self.window.scroll_area.viewport().width()
+        content = self.window.content_widget
+        self.assertLessEqual(content.width(), 1080)
+        self.assertGreaterEqual(content.width(), 760)
+        left_gap = content.x()
+        right_gap = central_width - content.geometry().right() - 1
+        self.assertLessEqual(abs(left_gap - right_gap), 1)
+
+        self.assertLess(self.window.columns_spin.geometry().right(), self.window.grid_group.width() // 2)
+        for widget in (
+            self.window.rows_spin,
+            self.window.columns_spin,
+            self.window.source_button,
+            self.window.output_button,
+        ):
+            self.assertGreaterEqual(widget.width(), widget.minimumSizeHint().width())
+
+    def test_short_window_scrolls_all_content_without_horizontal_scrollbar(self) -> None:
+        self.window.resize(900, 500)
+        self.window.show()
+        QApplication.processEvents()
+
+        vertical = self.window.scroll_area.verticalScrollBar()
+        horizontal = self.window.scroll_area.horizontalScrollBar()
+        self.assertGreater(vertical.maximum(), 0)
+        self.assertEqual(horizontal.maximum(), 0)
+        self.assertTrue(vertical.isVisible())
+        self.assertFalse(horizontal.isVisible())
+
+        vertical.setValue(vertical.maximum())
+        QApplication.processEvents()
+        self.assertEqual(vertical.value(), vertical.maximum())
+        self.assertTrue(self.window.open_output_button.isVisible())
+
     def test_unhandled_exception_is_logged_and_shown(self) -> None:
         error = RuntimeError("boom")
         with (

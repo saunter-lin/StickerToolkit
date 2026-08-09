@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import cast
 
-from PySide6.QtCore import QSettings, QThread, Slot
+from PySide6.QtCore import QSettings, Qt, QThread, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -15,10 +15,10 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QFormLayout,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLineEdit,
     QListWidget,
     QMainWindow,
@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QVBoxLayout,
@@ -55,6 +56,7 @@ from .workers import StickerWorker
 logger = logging.getLogger(__name__)
 
 PLATFORMS = (("LINE", "line"), ("微信", "wechat"), ("LINE＋微信", "both"))
+CONTENT_MAX_WIDTH = 1080
 
 
 class MainWindow(QMainWindow):
@@ -94,10 +96,26 @@ class MainWindow(QMainWindow):
     def _build_ui(self) -> None:
         self.setWindowTitle(f"Sticker Toolkit {__version__}")
         self.resize(800, 980)
-        root = QWidget(self)
-        layout = QVBoxLayout(root)
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        root = QWidget()
+        root_layout = QHBoxLayout(root)
+        root_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.addStretch(1)
+        self.content_widget = QWidget(root)
+        self.content_widget.setMinimumWidth(760)
+        self.content_widget.setMaximumWidth(CONTENT_MAX_WIDTH)
+        self.content_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        root_layout.addWidget(self.content_widget, 100)
+        root_layout.addStretch(1)
+        layout = QVBoxLayout(self.content_widget)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         layout.setSpacing(12)
-        self.setCentralWidget(root)
+        self.scroll_area.setWidget(root)
+        self.setCentralWidget(self.scroll_area)
 
         title = QLabel("Sticker Toolkit")
         title.setStyleSheet("font-size: 22px; font-weight: 600;")
@@ -151,18 +169,21 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.line_cover_group)
         layout.addWidget(self.wechat_cover_group)
 
-        grid_group = QGroupBox("圖片切割設定")
-        grid_layout = QGridLayout(grid_group)
+        self.grid_group = QGroupBox("圖片切割設定")
+        grid_layout = QHBoxLayout(self.grid_group)
         self.rows_spin = QSpinBox()
         self.columns_spin = QSpinBox()
         for spin in (self.rows_spin, self.columns_spin):
             spin.setRange(1, 99)
             spin.setValue(4)
-        grid_layout.addWidget(QLabel("行數："), 0, 0)
-        grid_layout.addWidget(self.rows_spin, 0, 1)
-        grid_layout.addWidget(QLabel("列數："), 0, 2)
-        grid_layout.addWidget(self.columns_spin, 0, 3)
-        layout.addWidget(grid_group)
+            spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        grid_layout.addWidget(QLabel("行數："))
+        grid_layout.addWidget(self.rows_spin)
+        grid_layout.addSpacing(24)
+        grid_layout.addWidget(QLabel("列數："))
+        grid_layout.addWidget(self.columns_spin)
+        grid_layout.addStretch(1)
+        layout.addWidget(self.grid_group)
 
         self.banner_group = QGroupBox("微信 Banner")
         banner_layout = QHBoxLayout(self.banner_group)
