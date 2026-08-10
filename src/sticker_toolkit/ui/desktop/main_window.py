@@ -145,12 +145,15 @@ class MainWindow(QMainWindow):
         batch_buttons = QHBoxLayout()
         self.batch_up_button = QPushButton("↑ 上移")
         self.batch_down_button = QPushButton("↓ 下移")
+        self.batch_remove_button = QPushButton("移除")
         self.batch_up_button.clicked.connect(lambda: self._move_batch_item(-1))
         self.batch_down_button.clicked.connect(lambda: self._move_batch_item(1))
+        self.batch_remove_button.clicked.connect(self._remove_batch_item)
         batch_buttons.addWidget(self.batch_count_label)
         batch_buttons.addStretch(1)
         batch_buttons.addWidget(self.batch_up_button)
         batch_buttons.addWidget(self.batch_down_button)
+        batch_buttons.addWidget(self.batch_remove_button)
         source_layout.addWidget(self.batch_list)
         source_layout.addLayout(batch_buttons)
         layout.addWidget(source_group)
@@ -346,12 +349,6 @@ class MainWindow(QMainWindow):
             )
             if paths:
                 self._apply_batch_source_paths([Path(path) for path in paths])
-                if len(paths) != 16:
-                    QMessageBox.warning(
-                        self,
-                        "圖片數量不正確",
-                        f"WeChat 批次單圖必須選擇 16 張，目前為 {len(paths)} 張，請重新選擇。",
-                    )
             return
         path, _ = QFileDialog.getOpenFileName(
             self,
@@ -372,7 +369,7 @@ class MainWindow(QMainWindow):
         if paths:
             self.settings.setValue("last_source_directory", str(paths[0].parent))
             if not self._output_user_selected:
-                self.output_edit.setText(str(suggested_output_directory(paths[0])))
+                self.output_edit.setText(str(paths[0].parent))
         self._refresh_detected_background_color()
         self._refresh_start_enabled()
 
@@ -389,6 +386,16 @@ class MainWindow(QMainWindow):
         self.batch_list.setCurrentRow(target)
 
     @Slot()
+    def _remove_batch_item(self) -> None:
+        row = self.batch_list.currentRow()
+        if row < 0 or row >= len(self._batch_source_paths):
+            return
+        del self._batch_source_paths[row]
+        self._apply_batch_source_paths(self._batch_source_paths.copy())
+        if self._batch_source_paths:
+            self.batch_list.setCurrentRow(min(row, len(self._batch_source_paths) - 1))
+
+    @Slot()
     def _update_input_mode(self) -> None:
         if not hasattr(self, "batch_list"):
             return
@@ -396,7 +403,13 @@ class MainWindow(QMainWindow):
         changed = mode != self._last_input_mode
         self._last_input_mode = mode
         batch = mode == "wechat_batch"
-        for widget in (self.batch_list, self.batch_count_label, self.batch_up_button, self.batch_down_button):
+        for widget in (
+            self.batch_list,
+            self.batch_count_label,
+            self.batch_up_button,
+            self.batch_down_button,
+            self.batch_remove_button,
+        ):
             widget.setVisible(batch)
         self.source_edit.setVisible(not batch)
         self.source_button.setText("選擇 16 張圖片" if batch else "選擇圖片")
@@ -563,7 +576,7 @@ class MainWindow(QMainWindow):
         batch = self.input_mode_combo.currentData() == "wechat_batch"
         ready = bool(self.source_edit.text() and self.platform_combo.currentData())
         if batch:
-            ready = len(self._batch_source_paths) == 16 and bool(self.banner_edit.text())
+            ready = bool(self._batch_source_paths) and bool(self.banner_edit.text())
         if self.line_cover_mode_combo.currentData() == "custom" and self.platform_combo.currentData() in {
             "line",
             "both",
@@ -612,6 +625,7 @@ class MainWindow(QMainWindow):
             self.input_mode_combo,
             self.batch_up_button,
             self.batch_down_button,
+            self.batch_remove_button,
             self.platform_combo,
             self.rows_spin,
             self.columns_spin,

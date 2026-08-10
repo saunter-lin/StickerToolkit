@@ -70,6 +70,8 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一�
 
 桌面版可直接選擇 16 張獨立 PNG／JPG／JPEG，依清單順序上移或下移後，批次套用既有背景透明化與 Normalize 管線，再交由同一套 WeChat exporter 輸出 `01.png`～`16.png`、Banner、cover、panel icon、Preview 與 ZIP。此模式適合逐張 AI 生圖工作流，且必須另外選擇 Banner；輸出素材目錄使用 `{banner_stem}_wechat_sticker`。
 
+選取 Batch 圖片後，輸出位置會自動使用目前清單第一張圖片所在資料夾；手動選擇輸出目錄後不會再被排序或移除操作覆蓋。清單提供「上移／下移／移除」，可先一次選取超過 16 張，再整理至正好 16 張；程式不會刪除原始檔或偷偷忽略多餘項目。
+
 LINE 與 WeChat 封面預設仍為自動產生；需要時可切換為自選圖片，程式會等比例 fit 至既有平台規格，不會拉伸。
 
 ## 輸出內容

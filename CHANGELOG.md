@@ -7,6 +7,8 @@
 - Improved tolerance for imperfect AI-generated 4×4 sticker sheets, removing likely neighboring-cell fragments while preserving legitimate sticker text, characters, and props.
 - 固定 4×4 分割後新增保守的 connected-component 分析；以跨格線連續性、相對面積、深入程度、邊界接觸比例與本格主體關係綜合判斷污染。
 - 只有高可信度的較小跨格碎片會轉為透明；完整文字、連接主體的耳朵／尾巴及未接觸格線的獨立小道具維持不變。
+- WeChat 批次單圖選取後，自動以目前第一張圖片的來源資料夾作為輸出位置；使用者手動選擇的路徑仍具有優先權。
+- Batch 清單新增「移除」，支援先選超過 16 張再整理；處理前明確提示數量不足或超過，不會忽略多餘圖片。
 
 ### Compatibility
 

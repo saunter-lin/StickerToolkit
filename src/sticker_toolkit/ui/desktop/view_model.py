@@ -51,8 +51,14 @@ def validate_form(data: DesktopFormData) -> None:
         raise DesktopValidationError("請選擇有效的輸入模式。")
     if data.input_mode == "wechat_batch":
         count = len(data.batch_source_paths)
-        if count != 16:
-            raise DesktopValidationError(f"WeChat 批次單圖必須選擇 16 張，目前為 {count} 張。")
+        if count < 16:
+            raise DesktopValidationError(
+                f"WeChat 批次單圖目前只有 {count} 張，尚不足 16 張。"
+            )
+        if count > 16:
+            raise DesktopValidationError(
+                f"WeChat 批次單圖目前有 {count} 張，請先使用「移除」整理至 16 張。"
+            )
         if data.platform != "wechat":
             raise DesktopValidationError("WeChat 批次單圖模式僅支援微信輸出。")
         if not data.banner_path.strip():

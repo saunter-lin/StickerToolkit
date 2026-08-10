@@ -11,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PIL import Image, ImageDraw
 from PySide6.QtCore import QSettings
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 from core.config import LINE_CONFIG
 from core.images import build_shared_stickers
@@ -230,6 +230,101 @@ class BatchDesktopTests(unittest.TestCase):
         self.window._move_batch_item(-1)
         self.assertEqual(Path(self.window._form_data().batch_source_paths[0]), self.paths[1])
 
+    def test_batch_output_defaults_to_first_source_parent(self) -> None:
+        self.window.input_mode_combo.setCurrentIndex(
+            self.window.input_mode_combo.findData("wechat_batch")
+        )
+        other = self.root / "其他資料夾"
+        other.mkdir()
+        other_path = other / "different.png"
+        make_single(other_path, (80, 90, 160))
+        self.window._apply_batch_source_paths([self.paths[0], other_path])
+        self.assertEqual(self.window.output_edit.text(), str(self.paths[0].parent))
+        self.window.batch_list.setCurrentRow(1)
+        self.window._move_batch_item(-1)
+        self.assertEqual(self.window.output_edit.text(), str(other_path.parent))
+
+    def test_remove_fifth_reindexes_without_deleting_original(self) -> None:
+        self.window.input_mode_combo.setCurrentIndex(
+            self.window.input_mode_combo.findData("wechat_batch")
+        )
+        extra = self.root / "item 16.png"
+        make_single(extra, (100, 80, 160))
+        selected = [*self.paths, extra]
+        removed = selected[4]
+        self.window._apply_batch_source_paths(selected)
+        self.window.batch_list.setCurrentRow(4)
+        self.window._remove_batch_item()
+        self.assertTrue(removed.is_file())
+        self.assertEqual(self.window.batch_count_label.text(), "已選擇 16 / 16 張")
+        self.assertEqual(self.window._batch_source_paths[4], selected[5])
+        item = self.window.batch_list.item(4)
+        assert item is not None
+        self.assertEqual(item.text(), f"05  {selected[5].name}")
+
+    def test_move_remove_preserve_manual_output_and_form_order(self) -> None:
+        self.window.input_mode_combo.setCurrentIndex(
+            self.window.input_mode_combo.findData("wechat_batch")
+        )
+        extra = self.root / "item 16.png"
+        make_single(extra, (100, 80, 160))
+        expected = [*self.paths, extra]
+        self.window._apply_batch_source_paths(expected)
+        manual = self.root / "自訂 Batch 輸出"
+        manual.mkdir()
+        with patch.object(QFileDialog, "getExistingDirectory", return_value=str(manual)):
+            self.window._choose_output()
+
+        self.window.batch_list.setCurrentRow(4)
+        self.window._remove_batch_item()
+        del expected[4]
+        self.window.batch_list.setCurrentRow(5)
+        self.window._move_batch_item(-1)
+        expected[4], expected[5] = expected[5], expected[4]
+
+        self.assertEqual(self.window.output_edit.text(), str(manual))
+        self.assertEqual(
+            self.window._form_data().batch_source_paths,
+            tuple(str(path) for path in expected),
+        )
+
+    def test_selecting_seventeen_is_allowed_then_start_validates_count(self) -> None:
+        self.window.input_mode_combo.setCurrentIndex(
+            self.window.input_mode_combo.findData("wechat_batch")
+        )
+        extra = self.root / "item 16.png"
+        make_single(extra, (100, 80, 160))
+        selected = [*self.paths, extra]
+        with (
+            patch.object(
+                QFileDialog,
+                "getOpenFileNames",
+                return_value=([str(path) for path in selected], "圖片"),
+            ),
+            patch.object(QMessageBox, "warning") as warning,
+        ):
+            self.window._choose_source()
+            warning.assert_not_called()
+
+        self.assertEqual(self.window.batch_count_label.text(), "已選擇 17 / 16 張")
+        self.window.banner_edit.setText(str(self.banner))
+        self.window._refresh_start_enabled()
+        self.assertTrue(self.window.start_button.isEnabled())
+        with patch.object(QMessageBox, "warning") as warning:
+            self.window._start_processing()
+        self.assertIsNone(self.window._thread)
+        self.assertIn("移除", warning.call_args.args[2])
+
+        self.window.batch_list.setCurrentRow(16)
+        self.window._remove_batch_item()
+        source, options = self.window.controller.build_request(self.window._form_data())
+        result = self.window.controller.process(source, options)
+        exported = result.for_platform("wechat")
+        self.assertEqual(len(exported.sticker_files), 16)
+        self.assertEqual(
+            [path.name for path in exported.sticker_files], [f"{index:02d}.png" for index in range(1, 17)]
+        )
+
     def test_view_model_blocks_wrong_count_and_builds_custom_covers(self) -> None:
         base = dict(
             source_path=str(self.paths[0]),
@@ -243,6 +338,14 @@ class BatchDesktopTests(unittest.TestCase):
         with self.assertRaisesRegex(DesktopValidationError, "15"):
             build_processing_options(
                 DesktopFormData(**base, batch_source_paths=tuple(map(str, self.paths[:15])))
+            )
+        extra = self.root / "item 16.png"
+        make_single(extra, (100, 80, 160))
+        with self.assertRaisesRegex(DesktopValidationError, "17.*移除"):
+            build_processing_options(
+                DesktopFormData(
+                    **base, batch_source_paths=tuple(map(str, [*self.paths, extra]))
+                )
             )
         options = build_processing_options(
             DesktopFormData(
