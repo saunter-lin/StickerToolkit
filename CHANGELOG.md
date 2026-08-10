@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased] — v1.3.3-dev
+
+### Changed
+
+- Improved tolerance for imperfect AI-generated 4×4 sticker sheets, removing likely neighboring-cell fragments while preserving legitimate sticker text, characters, and props.
+- 固定 4×4 分割後新增保守的 connected-component 分析；以跨格線連續性、相對面積、深入程度、邊界接觸比例與本格主體關係綜合判斷污染。
+- 只有高可信度的較小跨格碎片會轉為透明；完整文字、連接主體的耳朵／尾巴及未接觸格線的獨立小道具維持不變。
+
+### Compatibility
+
+- LINE、WeChat、Preview、ZIP、純色背景轉透明與 WeChat 批次單圖流程維持既有規格。
+- 未新增第三方影像相依套件，macOS 與 Windows 共用相同 Pillow／Python 核心。
+
 ## [v1.3.2] — 2026-08-09
 
 ### Added

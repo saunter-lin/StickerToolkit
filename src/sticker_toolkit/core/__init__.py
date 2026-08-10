@@ -1,5 +1,7 @@
 """不依賴 UI 的圖片處理 Core 公開 API。"""
 
+from core.grid_cleanup import clean_grid_edge_fragments
+
 from .background_alpha import (
     DEFAULT_SOLID_BACKGROUND_COLOR,
     DEFAULT_SOLID_BACKGROUND_TOLERANCE,
@@ -47,6 +49,7 @@ __all__ = [
     "StickerToolkitError",
     "UnsupportedFormatError",
     "build_shared_stickers",
+    "clean_grid_edge_fragments",
     "color_to_hex",
     "contain",
     "crop_visible",

@@ -7,6 +7,8 @@ from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from .grid_cleanup import clean_grid_edge_fragments
+
 WHITE_THRESHOLD = 248
 GRID_ROWS = 4
 GRID_COLUMNS = 4
@@ -117,10 +119,15 @@ def build_shared_stickers(
     remove_cell_edge_background: bool = True,
 ) -> list[Image.Image]:
     """只執行一次 Split → Trim → Safe Margin。"""
+    cells = split_grid(source)
+    prepared_cells = [
+        remove_edge_background(cell) if remove_cell_edge_background else cell.convert("RGBA")
+        for cell in cells
+    ]
+    prepared_cells = clean_grid_edge_fragments(prepared_cells, GRID_ROWS, GRID_COLUMNS)
     stickers: list[Image.Image] = []
-    for index, cell in enumerate(split_grid(source), 1):
+    for index, prepared in enumerate(prepared_cells, 1):
         try:
-            prepared = remove_edge_background(cell) if remove_cell_edge_background else cell.convert("RGBA")
             stickers.append(contain(prepared, size, padding))
         except StickerError as exc:
             raise StickerError(f"第 {index:02d} 格處理失敗：{exc}") from exc
