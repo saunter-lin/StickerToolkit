@@ -15,6 +15,6 @@ def open_in_file_manager(path: Path) -> None:
     if sys.platform == "darwin":
         subprocess.Popen(["open", str(target)])
     elif sys.platform == "win32":
-        os.startfile(str(target))  # type: ignore[attr-defined]
+        os.startfile(str(target))
     else:
         subprocess.Popen(["xdg-open", str(target)])
