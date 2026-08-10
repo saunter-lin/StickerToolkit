@@ -42,7 +42,7 @@ from sticker_toolkit.core import (
 from sticker_toolkit.version import __version__
 
 from .controllers import StickerController
-from .output_paths import suggested_output_directory
+from .output_paths import output_directory_from_root, suggested_output_directory
 from .platform_utils import open_in_file_manager
 from .view_model import (
     DesktopFormData,
@@ -684,7 +684,7 @@ class MainWindow(QMainWindow):
         if self._last_result is None:
             return
         try:
-            open_in_file_manager(Path(self.output_edit.text()))
+            open_in_file_manager(output_directory_from_root(Path(self.output_edit.text())))
         except OSError as exc:
             logger.exception("Unable to open output directory")
             QMessageBox.warning(self, "無法開啟輸出目錄", str(exc))

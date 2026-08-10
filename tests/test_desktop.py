@@ -17,7 +17,10 @@ from sticker_toolkit.services import StickerService
 from sticker_toolkit.ui.desktop import app as desktop_app
 from sticker_toolkit.ui.desktop.controllers import StickerController
 from sticker_toolkit.ui.desktop.main_window import MainWindow
-from sticker_toolkit.ui.desktop.output_paths import suggested_output_directory
+from sticker_toolkit.ui.desktop.output_paths import (
+    output_directory_from_root,
+    suggested_output_directory,
+)
 from sticker_toolkit.ui.desktop.view_model import (
     DesktopFormData,
     DesktopValidationError,
@@ -121,6 +124,18 @@ class DesktopViewModelTests(unittest.TestCase):
         ):
             build_processing_options(self.form())
 
+    def test_line_export_uses_output_below_selected_root(self) -> None:
+        selected_root = self.root / "manual-root"
+        options = build_processing_options(self.form(output_directory=str(selected_root)))
+        result = StickerService().process(self.source, options).for_platform("line")
+        self.assertEqual(
+            result.output_directory,
+            (selected_root / "output" / "line_sticker").resolve(),
+        )
+        self.assertTrue((selected_root / "output" / "preview" / "line").is_dir())
+        self.assertTrue((selected_root / "output" / "line_sticker.zip").is_file())
+        self.assertFalse((selected_root / "line_sticker").exists())
+
 
 class DesktopOutputPathTests(unittest.TestCase):
     def test_suggested_output_uses_source_stem(self) -> None:
@@ -133,6 +148,20 @@ class DesktopOutputPathTests(unittest.TestCase):
             with self.subTest(source_name=source_name):
                 source = Path("/source") / source_name
                 self.assertEqual(suggested_output_directory(source), Path("/source") / expected)
+
+    def test_output_root_adds_output_directory_once(self) -> None:
+        self.assertEqual(
+            output_directory_from_root(Path("/chosen/root")),
+            Path("/chosen/root/output"),
+        )
+        self.assertEqual(
+            output_directory_from_root(Path("/chosen/output")),
+            Path("/chosen/output"),
+        )
+        self.assertEqual(
+            output_directory_from_root(Path("/chosen/OUTPUT")),
+            Path("/chosen/OUTPUT"),
+        )
 
 
 class DesktopWorkerTests(unittest.TestCase):

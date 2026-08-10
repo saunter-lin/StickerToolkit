@@ -1,8 +1,8 @@
-# Sticker Toolkit v1.3.3-dev（macOS／Windows）
+# Sticker Toolkit v1.3.3（macOS／Windows）
 
 Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
 
-版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。目前開發版本為 v1.3.3-dev；最新正式發布版為 v1.3.2。
+版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。目前版本為 v1.3.3。
 
 ## 支援平台
 
@@ -19,7 +19,7 @@ Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過
 
 ### macOS（Apple Silicon）
 
-1. 下載 `StickerToolkit-v1.3.2-macOS-arm64.dmg`。
+1. 下載 `StickerToolkit-v1.3.3-macOS-arm64.dmg`。
 2. 開啟 DMG，將 `Sticker Toolkit.app` 拖曳至 `Applications`。
 3. 從「應用程式」啟動 Sticker Toolkit。
 
@@ -57,10 +57,10 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一�
 - 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
 - v1.3.1：可在切割前將與畫布外部連通的固定純色背景轉為透明 Alpha
 - v1.3.2：新增 WeChat 批次單圖模式，可直接依 GUI 順序處理 16 張 PNG／JPG
-- v1.3.3-dev：改善 AI 4×4 組圖的鄰格文字、角色與道具碎片清理容錯
+- v1.3.3：改善 AI 4×4 組圖的鄰格文字、角色與道具碎片清理容錯
 - LINE main 與 WeChat cover 可維持自動產生，或選用自訂 PNG／JPG／JPEG 封面
 
-### AI 4×4 鄰格污染清理（v1.3.3-dev）
+### AI 4×4 鄰格污染清理（v1.3.3）
 
 整合圖模式在固定 4×4 分割及既有背景清理後，會比對相鄰格線兩側的 connected components。程式綜合跨格連續性、相對面積、深入本格的距離、邊界接觸比例與本格主要內容關係，只移除高可信度的較小跨格碎片，不會固定裁掉每格邊緣。
 
@@ -320,7 +320,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:
 
 ## 版本資訊
 
-目前開發版本：`v1.3.3-dev`（最新正式發布版：`v1.3.2`）
+目前版本：`v1.3.3`
 
 詳見 [CHANGELOG.md](CHANGELOG.md)。
 

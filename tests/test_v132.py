@@ -287,6 +287,9 @@ class BatchDesktopTests(unittest.TestCase):
             self.window._form_data().batch_source_paths,
             tuple(str(path) for path in expected),
         )
+        self.window.banner_edit.setText(str(self.banner))
+        _source, options = self.window.controller.build_request(self.window._form_data())
+        self.assertEqual(options.output_directory, (manual / "output").resolve())
 
     def test_selecting_seventeen_is_allowed_then_start_validates_count(self) -> None:
         self.window.input_mode_combo.setCurrentIndex(
@@ -324,6 +327,10 @@ class BatchDesktopTests(unittest.TestCase):
         self.assertEqual(
             [path.name for path in exported.sticker_files], [f"{index:02d}.png" for index in range(1, 17)]
         )
+        self.assertEqual(exported.output_directory.parent, (self.root / "output").resolve())
+        self.assertTrue((self.root / "output" / "preview" / "wechat").is_dir())
+        self.assertTrue((self.root / "output" / "wechat_sticker.zip").is_file())
+        self.assertFalse((self.root / "wechat_sticker").exists())
 
     def test_view_model_blocks_wrong_count_and_builds_custom_covers(self) -> None:
         base = dict(

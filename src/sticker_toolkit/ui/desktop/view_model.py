@@ -14,7 +14,7 @@ from sticker_toolkit.core import (
     parse_hex_color,
 )
 
-from .output_paths import output_directory_is_writable
+from .output_paths import output_directory_from_root, output_directory_is_writable
 
 
 @dataclass(frozen=True)
@@ -79,7 +79,7 @@ def validate_form(data: DesktopFormData) -> None:
         raise DesktopValidationError("找不到來源圖片，請重新選擇。")
     if not data.output_directory.strip():
         raise DesktopValidationError("請選擇輸出目錄。")
-    output = Path(data.output_directory).expanduser()
+    output = output_directory_from_root(Path(data.output_directory))
     if not output_directory_is_writable(output):
         raise DesktopValidationError("輸出目錄無法寫入，請選擇其他位置。")
     if data.banner_path.strip() and not Path(data.banner_path).expanduser().is_file():
@@ -110,7 +110,7 @@ def build_processing_options(data: DesktopFormData) -> ProcessingOptions:
         rows=data.rows,
         columns=data.columns,
         trim_enabled=data.trim_enabled,
-        output_directory=Path(data.output_directory).expanduser().resolve(),
+        output_directory=output_directory_from_root(Path(data.output_directory)).resolve(),
         create_preview=data.create_preview,
         create_zip=data.create_zip,
         banner_path=banner,

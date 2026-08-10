@@ -12,6 +12,14 @@ def suggested_output_directory(source_path: Path) -> Path:
     return source.parent / f"{source.stem}_output"
 
 
+def output_directory_from_root(root_path: Path) -> Path:
+    """Resolve a user-selected root to the generated ``output`` directory."""
+    root = root_path.expanduser()
+    if root.name.casefold() == "output":
+        return root
+    return root / "output"
+
+
 def output_directory_is_writable(output_path: Path) -> bool:
     """Check the output itself, or its nearest existing parent, for writability."""
     candidate = output_path.expanduser()
