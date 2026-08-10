@@ -1,299 +1,212 @@
-# Sticker Toolkit v1.3.3（macOS／Windows）
+# Sticker Toolkit
 
-Sticker Toolkit 將一張規則排列的 4×4 貼圖合集切成 16 張，經過共用的 Trim、等比例縮放與 Safe Margin 管線後，可輸出 LINE、WeChat，或同時輸出兩種平台套件。程式不依靠合集檔名判斷來源。
+Sticker Toolkit 是一套支援 macOS 與 Windows 的桌面貼圖處理工具，可將 AI 生成的規則 4×4 貼圖組圖切成 16 張，或直接整理 16 張 WeChat 單圖。程式提供純色背景透明化、等比例縮放、安全留白、平台素材製作、Preview 與 ZIP 打包，可輸出 LINE、WeChat，或在 4×4 模式中同時輸出兩種平台。
 
-版本演進與相容性修正請參閱 [CHANGELOG.md](CHANGELOG.md)。目前版本為 v1.3.3。
-
-## 支援平台
-
-| 平台 | 架構 | 發布格式 | 狀態 |
-| --- | --- | --- | --- |
-| macOS | Apple Silicon（arm64） | DMG | ✅ 正式支援 |
-| Windows 10／11 | x64 | onedir ZIP | ✅ 正式支援 |
-
-正式安裝包與 SHA-256 校驗檔請從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載。
+目前正式版本為 **v1.3.3**。
 
 ## Quick Start
 
-一般使用者不需要安裝 Python、pip 或建立 virtual environment，直接從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載對應平台的正式版本即可。
+一般使用者不需要安裝 Python、pip 或 virtual environment，請直接從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載正式版本。
 
-### macOS（Apple Silicon）
+| 平台 | 支援架構 | 下載格式 |
+| --- | --- | --- |
+| macOS | Apple Silicon（arm64） | `StickerToolkit-v1.3.3-macOS-arm64.dmg` |
+| Windows 10／11 | x64 | `StickerToolkit-v1.3.3-Windows-x64.zip` |
 
-1. 下載 `StickerToolkit-v1.3.3-macOS-arm64.dmg`。
-2. 開啟 DMG，將 `Sticker Toolkit.app` 拖曳至 `Applications`。
-3. 從「應用程式」啟動 Sticker Toolkit。
+### macOS
 
-App 目前未使用 Apple Developer 簽章或公證；若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟，或前往「系統設定 → 隱私權與安全性」允許。
+1. 開啟 DMG。
+2. 將 `Sticker Toolkit.app` 拖曳至 `Applications`。
+3. 從「應用程式」啟動。
 
-### Windows x64
+App 目前未使用 Apple Developer 簽章或公證。若 Gatekeeper 阻擋，請在 Finder 對 App 按右鍵選擇「打開」，再確認開啟；也可前往「系統設定 → 隱私權與安全性」允許。
 
-1. 下載 Windows x64 onedir ZIP。
-2. 完整解壓縮 ZIP，保留整個資料夾結構。
-3. 執行解壓縮資料夾內的 `StickerToolkit.exe`。
+### Windows
 
-請勿直接從 ZIP 內執行，也不要只複製或單獨散布 `StickerToolkit.exe`。
+1. 完整解壓縮 Windows x64 ZIP。
+2. 保留資料夾內所有檔案與 `_internal` 結構。
+3. 執行 `StickerToolkit.exe`。
 
-### Windows Security Notice
+請勿直接從 ZIP 內執行，也不要只複製 `StickerToolkit.exe`。
 
-Windows 版本目前未使用 Microsoft Code Signing Certificate，因此第一次執行時可能會出現 Microsoft Defender SmartScreen。這不代表程式含有病毒，而是 Windows 對尚未建立信譽的未簽章程式所採用的正常保護機制。Sticker Toolkit 是開源專案，建議僅從本專案的 GitHub Release 下載；Release 同時提供 `SHA256SUMS.txt`，可用來驗證下載檔案的完整性。
+Windows 版本目前未使用 Microsoft Code Signing Certificate，第一次執行可能出現 Microsoft Defender SmartScreen。這是 Windows 對未簽章程式的正常保護機制，不代表程式含有病毒。請只從本專案的 GitHub Release 下載，並可使用 Release 中的 `SHA256SUMS.txt` 驗證檔案。
 
 若出現 `Windows protected your PC`：
 
 1. 按下 `More info`（更多資訊）。
-2. 再按 `Run anyway`（仍要執行）。
+2. 按下 `Run anyway`（仍要執行）。
 
-未來若專案採用 Windows Code Signing Certificate，此提示可能會逐漸消失。
+![Sticker Toolkit Desktop GUI](docs/images/sticker-toolkit-v1.3.png)
 
-## 功能
+## Features
 
-- 支援 `.png`、`.jpg`、`.jpeg` 4×4 貼圖合集
-- 一次執行 Split → Trim → Safe Margin，各平台輸出器共用 16 張處理結果
-- 移除透明空白或與邊界相連的近白背景
-- 保持比例、透明背景、置中及安全留白
-- LINE：自選 `main.png`、`tab.png`，規格驗證、Preview 與 ZIP
-- WeChat：8～24 張素材驗證、240×240 貼圖、Banner、封面、panel icon、Preview 與 ZIP
-- 可選 LINE、WeChat 或兩者一起輸出
-- Banner 僅執行 Resize → Center → Contain，不切割、不拉伸、不使用 AI 或 API
-- 中文錯誤訊息涵蓋解碼、切割、透明內容、Banner、PNG 驗證與 ZIP 寫入
-- v1.3.1：可在切割前將與畫布外部連通的固定純色背景轉為透明 Alpha
-- v1.3.2：新增 WeChat 批次單圖模式，可直接依 GUI 順序處理 16 張 PNG／JPG
-- v1.3.3：改善 AI 4×4 組圖的鄰格文字、角色與道具碎片清理容錯
-- LINE main 與 WeChat cover 可維持自動產生，或選用自訂 PNG／JPG／JPEG 封面
+- 支援 PNG、JPG、JPEG 的規則 4×4 貼圖組圖
+- 支援 WeChat 16 張 PNG／JPG／JPEG 單圖 Batch
+- 依 GUI 顯示順序處理及輸出貼圖
+- 裁除透明或近白空白，保留安全留白並等比例置中
+- 可選擇將外部連通的平坦純色背景轉為透明
+- LINE：貼圖、`main.png`、`tab.png`、Preview 與 ZIP
+- WeChat：貼圖、Banner、`cover.png`、`panel_icon.png`、Preview 與 ZIP
+- 4×4 模式可選擇 LINE、WeChat 或同時輸出
+- LINE main 與 WeChat cover 可自動產生或選擇自訂圖片
+- 使用透明 RGBA PNG，並檢查尺寸、格式及平台檔案大小限制
+- 中文錯誤訊息、實際處理進度、結果摘要及開啟輸出資料夾
 
-### AI 4×4 鄰格污染清理（v1.3.3）
+## Usage
 
-整合圖模式在固定 4×4 分割及既有背景清理後，會比對相鄰格線兩側的 connected components。程式綜合跨格連續性、相對面積、深入本格的距離、邊界接觸比例與本格主要內容關係，只移除高可信度的較小跨格碎片，不會固定裁掉每格邊緣。
+### 4×4 Sticker Sheet
 
-判斷原則是「寧可少刪，不要誤刪」：未接觸格線的完整文字與獨立愛心、標點、小道具會保留；與主要角色相連或深入本格較多的耳朵、腳、尾巴、毛髮也不會只因靠邊而移除。無法安全判定的內容會保留供 Preview 人工檢查。
+適合一張包含 4×4、共 16 格的規則貼圖組圖。
 
-### WeChat 批次單圖（v1.3.2）
+1. 選擇來源 PNG、JPG 或 JPEG。
+2. 選擇 LINE、WeChat 或 LINE＋WeChat。
+3. 視需要選擇 WeChat Banner、封面來源及背景透明化。
+4. 開始處理並檢查 Preview。
 
-桌面版可直接選擇 16 張獨立 PNG／JPG／JPEG，依清單順序上移或下移後，批次套用既有背景透明化與 Normalize 管線，再交由同一套 WeChat exporter 輸出 `01.png`～`16.png`、Banner、cover、panel icon、Preview 與 ZIP。此模式適合逐張 AI 生圖工作流，且必須另外選擇 Banner；輸出素材目錄使用 `{banner_stem}_wechat_sticker`。
+程式只切割一次，再由 LINE 與 WeChat 共用處理後的貼圖圖片。來源檔不會被修改。
 
-選取 Batch 圖片後，輸出位置會自動使用目前清單第一張圖片所在資料夾；手動選擇輸出目錄後不會再被排序或移除操作覆蓋。清單提供「上移／下移／移除」，可先一次選取超過 16 張，再整理至正好 16 張；程式不會刪除原始檔或偷偷忽略多餘項目。
+### WeChat 16-image Batch
 
-LINE 與 WeChat 封面預設仍為自動產生；需要時可切換為自選圖片，程式會等比例 fit 至既有平台規格，不會拉伸。
+適合已經分開產生的 16 張 WeChat 貼圖，不會再執行 4×4 切割。
 
-## 輸出內容
+- 可一次選擇超過 16 張，再使用「上移／下移／移除」整理順序。
+- 「移除」只會從目前工作清單移除，不會刪除磁碟上的原始圖片。
+- 實際輸出順序與 GUI 清單順序一致。
+- 正式開始處理前必須整理為正好 16 張。
+- Batch 模式必須另外選擇 WeChat Banner。
 
-### LINE
+### Background Removal
 
-- `line_sticker/01.png`～`16.png`：370×320 px RGBA PNG
-- `line_sticker/main.png`：240×240 px RGBA PNG
-- `line_sticker/tab.png`：96×74 px RGBA PNG
-- `output/preview/line/preview.png`：LINE 專屬總覽，包含 16 張、main、tab 與驗證
-- `line_sticker.zip`：唯一的 LINE ZIP 套件，不產生重複副本
+Sticker Toolkit 提供兩種背景整理：
 
-### WeChat
+- 自動裁除透明或近白空白。
+- 可選的「外部連通純色背景轉透明」：只從畫布邊界移除與外部連通的指定背景色，盡量保留角色內部的白色毛髮、文字、高光與描邊。
 
-- `output/preview/wechat/wechat_preview.png`：WeChat 專屬總覽，顯示貼圖、Banner、cover、panel icon、ZIP 內容與驗證結果
-- `wechat_sticker.zip`：唯一的 WeChat ZIP，結構如下：
+純色背景功能不是 AI 去背，最適合單一平坦背景；複雜背景、漸層、陰影或紋理不保證效果。若原圖已是真正透明 PNG，通常不需要啟用。
 
-```text
-wechat_sticker.zip
-├── 01.png                  # 240×240，最多 500KB
-├── ...
-├── 16.png
-├── banner.png              # 750×400，最多 500KB；未提供時省略
-├── cover.png               # 240×240 PNG，最多 500KB
-└── panel_icon.png          # 50×50 PNG，最多 100KB
-```
+AI 生圖建議：
 
-WeChat ZIP 不包含 `manifest.json` 或其他 JSON。貼圖數量驗證接受 8～24 張；目前 4×4 UI 仍預設產生 16 張。若缺少 Banner，仍會匯出貼圖、cover 與 panel icon 供檢查，但 Preview 會顯示「微信素材尚未完整，可能無法直接提交。」
+- 推薦使用淺米黃色 `#FFF8EC`，但也可自動偵測其他平坦純色。
+- 背景避免漸層、陰影、紋理或複雜內容。
+- 建議在角色及文字周圍加入白色描邊。
+- PNG 容差建議 `3–5`。
+- JPEG 可能因壓縮產生色差，容差建議 `10–15`，可從 `12` 開始。
+- 若仍有背景殘留，可逐步提高容差；數值越高，越可能影響淺色細節。
 
-### 輸出與 Preview 目錄
-
-```text
-output/
-├── line_sticker/
-├── wechat_sticker/
-├── preview/
-│   ├── line/
-│   │   ├── selection.png
-│   │   └── preview.png
-│   └── wechat/
-│       ├── selection.png
-│       └── wechat_preview.png
-├── line_sticker.zip
-└── wechat_sticker.zip
-```
-
-重新輸出 LINE 只會重建 `output/line_sticker/`、`output/line_sticker.zip` 與 `output/preview/line/`；重新輸出 WeChat 同理，不會刪除另一平台的結果。所有生成內容都位於 `output/`，直接刪除該目錄即可完整清理。若偵測到 v1.2.2 遺留的專案根目錄 `preview/`，程式會在執行時安全移除。
-
-### WeChat 素材最佳化
-
-所有 PNG 先以 RGBA、`optimize=True` 與最高壓縮等級輸出。若仍超過上限，依序嘗試 256、128、64、32 色的最佳化 PNG；仍超限時停止匯出並顯示中文錯誤，不會把超規素材標示為成功。
-
-### 純色背景轉透明（v1.3.1）
-
-Sticker Toolkit 可在切割 4×4 合集前，從畫布邊界開始，只將與外部連通的指定純色轉為透明。這不是 AI 去背，最適合固定純色、無漸層、無陰影、無紋理的背景。
-
-推薦 AI 生圖時使用純色淺米黃色背景，例如 `#FFF8EC`，背景僅作為後續自動去背使用。功能預設關閉；啟用後預設自動偵測背景色，容差維持為 `3`。純色 PNG 建議使用 `3～5`；JPEG 或有壓縮色差的圖片可提高至 `10～15`。數值越高越可能影響淺色細節。複雜背景不保證效果；若原圖已是真正透明 PNG，無需啟用。
-
-AI 貼圖合集建議：
-
-- `#FFF8EC` 是推薦值，不是強制值；程式也可自動偵測其他平坦純色背景。
-- 背景應為單一純色，避免漸層、陰影、紋理或複雜背景。
-- 建議在角色與貼圖內容周圍加入白色描邊，並以清楚的 4×4 格線分隔 16 張貼圖。
-- 優先使用 PNG；純色 PNG tolerance 建議 `3–5`。
-- JPEG 可能產生背景色差，tolerance 建議 `10–15`，可從 `12` 開始嘗試。
-
-可直接提供給 AI 生圖的 Prompt 範例：
+AI 生圖 Prompt 範例：
 
 ```text
 Use a solid light cream background (#FFF8EC), with no gradients, shadows, or textures. The background is intended for automatic removal. Add a white outline around each sticker and clearly separate all stickers in a 4×4 grid.
 ```
 
+## Output
+
+GUI 顯示或自動建議的是「輸出根目錄」。實際產物統一放在根目錄下的 `output/`：
+
+```text
+<root>/output/
+├── line_sticker/
+├── wechat_sticker/
+├── preview/
+│   ├── line/
+│   └── wechat/
+├── line_sticker.zip
+└── wechat_sticker.zip
+```
+
+- 4×4 模式會建議來源圖片同層的 `<來源檔名>_output` 作為根目錄。例如 `berry.png` 會使用 `berry_output/`，實際產物位於 `berry_output/output/`。
+- Batch 模式會以目前第一張圖片所在資料夾作為自動根目錄；圖片來自不同資料夾時仍以第一張為準。
+- 使用者手動指定的根目錄具有優先權，不會因重新排序或移除 Batch 圖片而被覆蓋。
+- 若選擇的資料夾本身已名為 `output`，程式會直接使用，不會建立 `output/output`。
+- 「開啟輸出資料夾」會開啟實際存放產物的 `output/`。
+- 重新輸出 LINE 或 WeChat 時只清理該平台的素材、ZIP 與 Preview，不影響另一平台。
+
+> Note：WeChat Batch 目前會依 Banner 檔名將素材目錄命名為 `{banner_stem}_wechat_sticker`；ZIP 與 Preview 仍位於同一個 `<root>/output/`。
+
+## LINE / WeChat Specifications
+
+### LINE
+
+| 素材 | 規格 |
+| --- | --- |
+| Sticker | 16 張、370×320、RGBA PNG |
+| `main.png` | 240×240、RGBA PNG |
+| `tab.png` | 96×74、RGBA PNG |
+| Preview | `<root>/output/preview/line/preview.png` |
+| ZIP | `<root>/output/line_sticker.zip` |
+
+### WeChat
+
+| 素材 | 規格 |
+| --- | --- |
+| Sticker | 240×240；目前 UI 輸出 16 張 |
+| Banner | 750×400，PNG 或 JPG 來源會轉為正式素材 |
+| `cover.png` | 240×240 PNG |
+| `panel_icon.png` | 50×50 PNG |
+| Preview | `<root>/output/preview/wechat/wechat_preview.png` |
+| ZIP | `<root>/output/wechat_sticker.zip` |
+
+WeChat 驗證接受 8～24 張貼圖，以保留未來擴充彈性；目前 4×4 與 Batch UI 都處理 16 張。每張貼圖、Banner 與 cover 不超過 500KB，panel icon 不超過 100KB。一般 4×4 WeChat 流程若缺少 Banner，仍可匯出供檢查，但 Preview 會提示素材尚未完整；Batch 模式則必須先選擇 Banner。
+
+WeChat ZIP 不包含 `manifest.json` 或其他 JSON。
+
+## Known Limitations
+
+- 4×4 模式預期規則排列且格子等寬的 4×4 組圖。
+- WeChat Batch 正式處理前必須正好 16 張，且需要 Banner。
+- 純色背景透明化不是 AI 去背，複雜背景不保證結果。
+- JPEG 壓縮色差可能需要較高容差，建議優先使用 PNG。
+- `tab.png` 不使用角色臉部辨識模型，只會裁切並等比例縮放完整主體。
+- macOS 與 Windows 發布包目前均未使用商業 code signing。
+- macOS 正式包目前僅提供 Apple Silicon arm64；Windows 正式包目前僅提供 x64。
+
 ## Development
 
-以下內容僅供開發者、Contributor，以及需要自行修改原始碼的使用者。一般使用者請直接從 [GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases) 下載 macOS DMG 或 Windows x64 ZIP。
+以下內容僅供開發者、Contributor 及需要修改原始碼的使用者。一般使用者請使用 GitHub Release。
 
-### 從原始碼啟動桌面介面
-
-先安裝桌面版選用相依套件：
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e '.[desktop]'
-```
-
-從專案根目錄啟動：
-
-```bash
-PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
-```
-
-桌面版可選擇整合圖或 WeChat 批次單圖、LINE／微信／兩者、微信 Banner、自動或自選封面與輸出目錄；支援背景處理、真實進度、錯誤提示、結果摘要及跨平台開啟輸出資料夾。圖片處理全部交由 `StickerService` 執行，視窗不包含圖片演算法。
-
-![Sticker Toolkit v1.3.0 Desktop GUI](docs/images/sticker-toolkit-v1.3.png)
-
-選擇來源圖片後，Desktop 會建議同層的 `<來源檔名>_output` 作為輸出根目錄，例如 `berry.png` 對應 `berry_output/`。手動指定的輸出位置具有優先權，建議位置不可寫時會在開始處理前顯示錯誤，不會改用系統暫存目錄。
-
-- macOS Log：`~/Library/Logs/StickerToolkit/sticker_toolkit.log`
-- Windows Log：`%LOCALAPPDATA%/StickerToolkit/Logs/sticker_toolkit.log`
-
-### 開發者操作與技術參考
-
-#### 使用 input 資料夾
-
-1. 將貼圖合集放入 `input/`。
-2. 選用：將任意檔名的橫向 PNG Banner 放在同一資料夾。
-3. 雙擊 `build.command`。若 macOS 阻擋，請在 Finder 對檔案按右鍵並選擇「打開」。
-4. 選擇 LINE、WeChat 或同時輸出。
-5. LINE 模式會繼續詢問 main 與 tab 的貼圖編號；WeChat 模式會詢問 cover 來源，panel icon 預設使用相同貼圖。若沒有 Banner，可輸入 Banner 路徑或直接略過。
-6. 完成後會開啟 Preview 與 `output/`。
-
-直接按 Enter 選擇預設值時，仍會輸出 LINE 並使用第 1 張作為 main 與 tab，保留 v1.1 操作方式。非互動模式遇到多張合集時，沿用舊版規則選擇最後修改時間最新者。
-
-#### 拖放資料夾
-
-可將資料夾拖到 `build.command` 上。假設資料夾內容如下：
-
-```text
-MySticker/
-├── Berry.png
-└── my_image.png
-```
-
-Banner 偵測順序如下：
-
-1. `--banner` 手動指定路徑。
-2. 不分大小寫的 `wechat_banner` 或 `banner` 檔名，支援 PNG、JPG、JPEG、WebP；檔名符合時不限制原始比例。
-3. 其他剩餘圖片若為橫向，且套用 EXIF Orientation 後的寬高比與 `WECHAT_CONFIG.banner_size` 相差不超過 5%，即視為比例候選。
-4. 仍找不到時提示手動輸入；直接按 Enter 可略過。
-
-近方形圖片優先視為 4×4 合集，已選定的合集不會同時作為 Banner。多張同優先級 Banner 候選時，互動模式會列出檔名、方向修正後的尺寸與比例供選擇。所有 Banner 最後都經同一套 EXIF 方向校正、色彩轉換、等比例 contain 與置中流程。
-
-### 命令列使用方式
-
-```bash
-python3 sticker_processor.py
-python3 sticker_processor.py /path/to/MySticker --interactive
-python3 sticker_processor.py --input /path/to/Berry.png --platform line --main 9 --tab 3
-python3 sticker_processor.py --input /path/to/Berry.png --platform wechat --banner /path/to/any-name.png
-python3 sticker_processor.py --input /path/to/Berry.png --platform both --main 9 --tab 3 --wechat-cover 5
-```
-
-`--platform` 支援 `line`、`wechat`、`both`；未指定時預設 `line`。
-
-### 架構
-
-```text
-UI / CLI
-   ↓
-StickerService
-   ↓
-Core image-processing modules
-   ↓
-Filesystem outputs
-```
-
-- `src/sticker_toolkit/core/`：純 Python 圖片載入、切割、處理、輸出 facade、資料模型與例外；不依賴 UI
-- `src/sticker_toolkit/services/`：唯一的流程協調入口 `StickerService`
-- `src/sticker_toolkit/presets/`：LINE 與 WeChat 平台差異及驗證範圍
-- `src/sticker_toolkit/ui/cli/`：命令列參數、互動、進度與結果顯示 adapter
-- `src/sticker_toolkit/ui/desktop/`：PySide6 主視窗、ViewModel、控制器、QThread worker 與平台工具
-- `core/`、`exporters/`：保留 v1.2 已驗證的演算法／輸出實作，透過新 Core API 漸進遷移
-- `sticker_processor.py`：舊版命令的薄相容入口，不再保存圖片處理流程
-- `cover.py`、`exporter.py`：v1.1 程式介面的相容層
-
-Core 可在完全不 import CLI 或桌面 UI 的環境下使用。CLI 與桌面版都建立 `ProcessingOptions`，再呼叫同一個 `StickerService.process()`；結果、警告與錯誤分別透過 `ProcessingResult`、回傳值及自訂例外傳遞。桌面 worker 使用 Qt signal 將進度、結果與錯誤送回主執行緒。macOS arm64 DMG 與 Windows x64 onedir 均已完成原生環境建置及功能驗證。
-
-#### 套件入口
-
-```bash
-PYTHONPATH=src python3 -m sticker_toolkit.ui.cli --input input/example.png --platform line
-PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
-```
-
-服務層可由 CLI、桌面控制器或背景 worker 共用：
-
-```python
-from pathlib import Path
-from sticker_toolkit.core import ProcessingOptions
-from sticker_toolkit.services import StickerService
-
-result = StickerService().process(
-    Path("input/sheet.png"),
-    ProcessingOptions(platform="both", output_directory=Path("output")),
-    progress_callback=lambda percent, message: print(percent, message),
-)
-```
-
-### 調整尺寸與安全留白
-
-所有平台尺寸集中在 `core/config.py`：
-
-- `LINE_CONFIG.sticker_size`、`sticker_padding`
-- `LINE_CONFIG.main_size`、`main_padding`
-- `LINE_CONFIG.tab_size`、`tab_padding`
-- `WECHAT_CONFIG` 集中管理 8～24 張數量範圍、240×240 貼圖、750×400 Banner、240×240 cover、50×50 panel icon，以及 500KB／100KB 上限
-
-### 開發與測試
-
-安裝 Core、Desktop 與開發工具：
+需要 Python 3.10 或更新版本：
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -e '.[desktop,dev]'
 ```
 
+啟動桌面版：
+
 ```bash
-PYTHONPATH=src .venv/bin/python -m compileall -q src core exporters sticker_processor.py
-QT_QPA_PLATFORM=offscreen PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
-.venv/bin/ruff check .
-PYTHONPATH=src .venv/bin/mypy sticker_processor.py src/sticker_toolkit core exporters
+PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.desktop
 ```
 
-### Build／封裝
+啟動 CLI：
 
-安裝 PyInstaller：
+```bash
+PYTHONPATH=src .venv/bin/python -m sticker_toolkit.ui.cli --input input/example.png --platform line
+```
+
+品質檢查：
+
+```bash
+.venv/bin/python -m pytest
+.venv/bin/ruff check .
+.venv/bin/mypy .
+.venv/bin/python -m compileall -q src core exporters tests packaging
+git diff --check
+```
+
+Log 位置：
+
+- macOS：`~/Library/Logs/StickerToolkit/sticker_toolkit.log`
+- Windows：`%LOCALAPPDATA%/StickerToolkit/Logs/sticker_toolkit.log`
+
+## Build
+
+安裝封裝相依套件：
 
 ```bash
 .venv/bin/python -m pip install -e '.[desktop,build]'
 ```
 
-macOS 建置、Bundle 驗證與 DMG：
+macOS：
 
 ```bash
 PYTHON_BIN=.venv/bin/python packaging/build_macos.sh
@@ -301,34 +214,24 @@ packaging/verify_macos_app.sh
 PYTHON_BIN=.venv/bin/python packaging/create_dmg.sh
 ```
 
-Windows 已在原生 Windows x64 環境驗證。建議使用可重複建立 `.venv-win`、版本化 onedir 與 ZIP 的腳本：
+Windows：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:\path\to\python.exe"
 ```
 
-詳細需求與實機驗證方式請參閱 [Windows x64 建置說明](docs/WINDOWS_BUILD.md)、[packaging/README.md](packaging/README.md) 與 [Windows 原生驗證清單](packaging/WINDOWS_TEST_CHECKLIST.md)。`build/`、`dist/`、`release/`、DMG、Log、cache 與測試產物皆不納入 Git。
+詳細資料請參閱 [Packaging 說明](packaging/README.md)、[Windows 建置說明](docs/WINDOWS_BUILD.md) 與 [Windows 原生驗證清單](packaging/WINDOWS_TEST_CHECKLIST.md)。
 
-## 已知限制
+## Version / CHANGELOG / Roadmap
 
-- 合集必須是規則排列的 4×4；不支援其他格數或不等寬排版。
-- JPG 壓縮雜色可能影響白底移除，建議優先使用含透明背景的 PNG。
-- `tab.png` 不使用角色臉部辨識模型，只會緊密裁切並放大完整主體。
-- 從原始碼安裝相依套件時需要網路及 Python 3。
-- macOS 正式封裝目前僅支援 Apple Silicon `arm64`，且未簽章、未公證。
-- Windows 套件尚未簽章，可能出現 SmartScreen 或防毒誤報；必須保留完整 onedir 結構。
+- 目前正式版本：`v1.3.3`
+- 版本演進：[CHANGELOG.md](CHANGELOG.md)
+- 正式下載：[GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases)
 
-## 版本資訊
+Roadmap：
 
-目前版本：`v1.3.3`
-
-詳見 [CHANGELOG.md](CHANGELOG.md)。
-
-## Roadmap
-
-- 支援其他列數與欄數的合集圖
-- 完成 Developer ID 簽章、公證與 Gatekeeper 發行驗證
-- 評估 Windows code signing、SmartScreen reputation 與 onefile 發行格式
-- 評估 Intel／Universal macOS 建置需求
-- 提供裁切與安全留白即時調整
-- 加入更多平台 exporter 與批次處理
+- 支援其他列數與欄數的組圖
+- Developer ID 簽章、公證及 Windows code signing
+- 評估 Intel／Universal macOS 建置
+- 裁切與安全留白即時調整
+- 更多平台 exporter
