@@ -20,6 +20,7 @@ from exporters.line import export_line
 from exporters.wechat import export_wechat
 from sticker_toolkit.core import ProcessingOptions, StickerToolkitError
 from sticker_toolkit.services import StickerService
+from sticker_toolkit.ui.desktop.i18n import tr
 from sticker_toolkit.ui.desktop.main_window import MainWindow
 from sticker_toolkit.ui.desktop.view_model import (
     DesktopFormData,
@@ -202,10 +203,18 @@ class BatchDesktopTests(unittest.TestCase):
         cls.application = QApplication.instance() or QApplication([])
 
     def setUp(self) -> None:
-        settings = QSettings("StickerToolkit", "StickerToolkit")
-        settings.clear()
-        settings.setValue("language", "zh_TW")
-        settings.sync()
+        for settings in (
+            QSettings("StickerToolkit", "StickerToolkit"),
+            QSettings(
+                QSettings.Format.IniFormat,
+                QSettings.Scope.UserScope,
+                "StickerToolkit",
+                "StickerToolkit",
+            ),
+        ):
+            settings.clear()
+            settings.setValue("language", "zh_TW")
+            settings.sync()
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.paths = []
@@ -223,11 +232,13 @@ class BatchDesktopTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_mode_count_and_move_update_form_order(self) -> None:
-        self.window.input_mode_combo.setCurrentIndex(self.window.input_mode_combo.findData("wechat_batch"))
+        self.window.input_mode_combo.setCurrentIndex(
+            self.window.input_mode_combo.findData("wechat_batch")
+        )
         self.window._apply_batch_source_paths(self.paths)
         self.window.banner_edit.setText(str(self.banner))
         self.window._refresh_start_enabled()
-        self.assertEqual(self.window.batch_count_label.text(), "已選擇 16 / 16 張")
+        self.assertEqual(self.window.batch_count_label.text(), tr("zh_TW", "batch.count", count=16))
         self.assertTrue(self.window.start_button.isEnabled())
         self.window.batch_list.setCurrentRow(1)
         self.window._move_batch_item(-1)
@@ -259,7 +270,7 @@ class BatchDesktopTests(unittest.TestCase):
         self.window.batch_list.setCurrentRow(4)
         self.window._remove_batch_item()
         self.assertTrue(removed.is_file())
-        self.assertEqual(self.window.batch_count_label.text(), "已選擇 16 / 16 張")
+        self.assertEqual(self.window.batch_count_label.text(), tr("zh_TW", "batch.count", count=16))
         self.assertEqual(self.window._batch_source_paths[4], selected[5])
         item = self.window.batch_list.item(4)
         assert item is not None
@@ -295,9 +306,7 @@ class BatchDesktopTests(unittest.TestCase):
         self.assertEqual(options.output_directory, (manual / "output").resolve())
 
     def test_selecting_seventeen_is_allowed_then_start_validates_count(self) -> None:
-        self.window.input_mode_combo.setCurrentIndex(
-            self.window.input_mode_combo.findData("wechat_batch")
-        )
+        self.window.input_mode_combo.setCurrentIndex(self.window.input_mode_combo.findData("wechat_batch"))
         extra = self.root / "item 16.png"
         make_single(extra, (100, 80, 160))
         selected = [*self.paths, extra]
@@ -312,7 +321,7 @@ class BatchDesktopTests(unittest.TestCase):
             self.window._choose_source()
             warning.assert_not_called()
 
-        self.assertEqual(self.window.batch_count_label.text(), "已選擇 17 / 16 張")
+        self.assertEqual(self.window.batch_count_label.text(), tr("zh_TW", "batch.count", count=17))
         self.window.banner_edit.setText(str(self.banner))
         self.window._refresh_start_enabled()
         self.assertTrue(self.window.start_button.isEnabled())
