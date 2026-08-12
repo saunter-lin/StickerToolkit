@@ -7,12 +7,14 @@ import sys
 from types import TracebackType
 from typing import cast
 
+from PySide6.QtCore import QLocale, QSettings
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from sticker_toolkit.logging_config import configure_logging
 from sticker_toolkit.resources import get_resource_path
 
+from .i18n import normalize_language, tr
 from .main_window import MainWindow
 
 logger = logging.getLogger(__name__)
@@ -30,11 +32,24 @@ def _show_unhandled_exception(
     )
     application = QApplication.instance()
     if isinstance(application, QApplication):
+        if sys.platform == "win32":
+            settings = QSettings(
+                QSettings.Format.IniFormat,
+                QSettings.Scope.UserScope,
+                "StickerToolkit",
+                "StickerToolkit",
+            )
+        else:
+            settings = QSettings("StickerToolkit", "StickerToolkit")
+        saved_language = settings.value("language")
+        language = normalize_language(
+            str(saved_language) if saved_language is not None else None,
+            QLocale.system().name(),
+        )
         QMessageBox.critical(
             None,
-            "Sticker Toolkit 發生錯誤",
-            "程式發生未預期錯誤。詳細資訊已寫入本機記錄檔。\n\n"
-            f"{exception_type.__name__}: {exception}",
+            tr(language, "error.unexpected_title"),
+            tr(language, "error.unexpected", error=f"{exception_type.__name__}: {exception}"),
         )
 
 

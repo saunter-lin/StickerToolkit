@@ -2,7 +2,7 @@
 
 Sticker Toolkit 是一套支援 macOS 與 Windows 的桌面貼圖處理工具，可將 AI 生成的規則 4×4 貼圖組圖切成 16 張，或直接整理 16 張 WeChat 單圖。程式提供純色背景透明化、等比例縮放、安全留白、平台素材製作、Preview 與 ZIP 打包，可輸出 LINE、WeChat，或在 4×4 模式中同時輸出兩種平台。
 
-目前正式版本為 **v1.3.3**。
+目前版本為 **v1.3.4**；正式安裝檔將於 macOS 與 Windows 封裝驗證完成後一併發布。
 
 ## Quick Start
 
@@ -50,7 +50,10 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，第一次執�
 - 4×4 模式可選擇 LINE、WeChat 或同時輸出
 - LINE main 與 WeChat cover 可自動產生或選擇自訂圖片
 - 使用透明 RGBA PNG，並檢查尺寸、格式及平台檔案大小限制
-- 中文錯誤訊息、實際處理進度、結果摘要及開啟輸出資料夾
+- 三語錯誤訊息、實際處理進度、結果摘要及開啟輸出資料夾
+- Desktop GUI 支援繁體中文、简体中文與 English
+
+首次啟動時，Desktop GUI 會依系統語言選擇繁體中文、简体中文或 English。使用者可在主視窗右上角即時切換，程式會記住選擇；介面語言不會改變圖片處理方式、輸出內容、檔名或資料夾結構。
 
 ## Usage
 
@@ -224,7 +227,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:
 
 ## Version / CHANGELOG / Roadmap
 
-- 目前正式版本：`v1.3.3`
+- 目前版本：`v1.3.4`
 - 版本演進：[CHANGELOG.md](CHANGELOG.md)
 - 正式下載：[GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases)
 

@@ -202,7 +202,10 @@ class BatchDesktopTests(unittest.TestCase):
         cls.application = QApplication.instance() or QApplication([])
 
     def setUp(self) -> None:
-        QSettings("StickerToolkit", "StickerToolkit").clear()
+        settings = QSettings("StickerToolkit", "StickerToolkit")
+        settings.clear()
+        settings.setValue("language", "zh_TW")
+        settings.sync()
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.paths = []

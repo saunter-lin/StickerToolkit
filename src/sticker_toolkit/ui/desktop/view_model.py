@@ -14,6 +14,7 @@ from sticker_toolkit.core import (
     parse_hex_color,
 )
 
+from .i18n import tr
 from .output_paths import output_directory_from_root, output_directory_is_writable
 
 
@@ -52,13 +53,9 @@ def validate_form(data: DesktopFormData) -> None:
     if data.input_mode == "wechat_batch":
         count = len(data.batch_source_paths)
         if count < 16:
-            raise DesktopValidationError(
-                f"WeChat 批次單圖目前只有 {count} 張，尚不足 16 張。"
-            )
+            raise DesktopValidationError(f"WeChat 批次單圖目前只有 {count} 張，尚不足 16 張。")
         if count > 16:
-            raise DesktopValidationError(
-                f"WeChat 批次單圖目前有 {count} 張，請先使用「移除」整理至 16 張。"
-            )
+            raise DesktopValidationError(f"WeChat 批次單圖目前有 {count} 張，請先使用「移除」整理至 16 張。")
         if data.platform != "wechat":
             raise DesktopValidationError("WeChat 批次單圖模式僅支援微信輸出。")
         if not data.banner_path.strip():
@@ -123,24 +120,30 @@ def build_processing_options(data: DesktopFormData) -> ProcessingOptions:
     )
 
 
-def user_error_message(error: Exception) -> str:
+def user_error_message(error: Exception, language: str = "zh_TW") -> str:
     if isinstance(error, InvalidSourceImageError):
-        return "無法讀取來源圖片，請確認檔案格式是否正確。"
+        return tr(language, "error.invalid_source")
     if isinstance(error, InvalidGridError):
-        return "切割設定不正確，請確認行數與列數。"
+        return tr(language, "error.invalid_grid")
     if isinstance(error, StickerToolkitError):
         return str(error)
     if isinstance(error, OSError):
-        return "輸出目錄無法寫入，請選擇其他位置。"
-    return "處理失敗，請查看記錄檔取得詳細資訊。"
+        return tr(language, "error.output")
+    return tr(language, "error.generic")
 
 
-def result_summary(result: ProcessingResult) -> str:
-    lines = ["處理完成", f"輸出平台：{', '.join(item.platform for item in result.platforms)}"]
+def result_summary(result: ProcessingResult, language: str = "zh_TW") -> str:
+    lines = [
+        tr(language, "summary.completed"),
+        tr(language, "summary.platforms", platforms=", ".join(item.platform for item in result.platforms)),
+    ]
     for item in result.platforms:
-        lines.append(f"{item.platform} 貼圖：{len(item.sticker_files)} 張")
-        lines.append(f"{item.platform} 目錄：{item.output_directory}")
-        lines.append(f"{item.platform} ZIP：{item.zip_file or '未建立'}")
-        lines.append(f"{item.platform} Preview：{item.preview_file or '未建立'}")
-    lines.extend(f"警告：{warning}" for warning in result.warnings)
+        lines.append(tr(language, "summary.stickers", platform=item.platform, count=len(item.sticker_files)))
+        lines.append(tr(language, "summary.directory", platform=item.platform, path=item.output_directory))
+        missing = tr(language, "summary.not_created")
+        lines.append(tr(language, "summary.zip", platform=item.platform, path=item.zip_file or missing))
+        lines.append(
+            tr(language, "summary.preview", platform=item.platform, path=item.preview_file or missing)
+        )
+    lines.extend(tr(language, "summary.warning", warning=warning) for warning in result.warnings)
     return "\n".join(lines)

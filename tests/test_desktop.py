@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PIL import Image, ImageDraw
-from PySide6.QtCore import QEventLoop, QSettings, QTimer
+from PySide6.QtCore import QEventLoop, QLocale, QSettings, QTimer
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 from sticker_toolkit.core import ProcessingOptions, ProcessingResult
@@ -244,17 +244,31 @@ class MainWindowStateTests(unittest.TestCase):
 
     @staticmethod
     def _clear_desktop_settings() -> None:
-        settings = QSettings(
-            QSettings.Format.IniFormat,
-            QSettings.Scope.UserScope,
-            "StickerToolkit",
-            "StickerToolkit",
-        )
-        settings.clear()
-        settings.sync()
+        for settings in (
+            QSettings("StickerToolkit", "StickerToolkit"),
+            QSettings(
+                QSettings.Format.IniFormat,
+                QSettings.Scope.UserScope,
+                "StickerToolkit",
+                "StickerToolkit",
+            ),
+        ):
+            settings.clear()
+            settings.sync()
 
     def setUp(self) -> None:
         self._clear_desktop_settings()
+        for settings in (
+            QSettings("StickerToolkit", "StickerToolkit"),
+            QSettings(
+                QSettings.Format.IniFormat,
+                QSettings.Scope.UserScope,
+                "StickerToolkit",
+                "StickerToolkit",
+            ),
+        ):
+            settings.setValue("language", "zh_TW")
+            settings.sync()
         self.window = MainWindow()
         self.test_temp = tempfile.TemporaryDirectory()
 
@@ -313,6 +327,51 @@ class MainWindowStateTests(unittest.TestCase):
     def test_start_disabled_without_source(self) -> None:
         self.assertFalse(self.window.start_button.isEnabled())
         self.assertEqual(self.window.output_edit.text(), "")
+
+    def test_first_launch_uses_system_language_and_saved_language_wins(self) -> None:
+        with patch.object(QMessageBox, "information"):
+            self.window.close()
+        self._clear_desktop_settings()
+        with patch(
+            "sticker_toolkit.ui.desktop.main_window.QLocale.system",
+            return_value=QLocale("zh_CN"),
+        ):
+            self.window = MainWindow()
+        self.assertEqual(self.window.language, "zh_CN")
+        self.assertEqual(self.window.start_button.text(), "开始处理")
+
+        self.window.language_combo.setCurrentIndex(self.window.language_combo.findData("en"))
+        with patch.object(QMessageBox, "information"):
+            self.window.close()
+        with patch(
+            "sticker_toolkit.ui.desktop.main_window.QLocale.system",
+            return_value=QLocale("zh_TW"),
+        ):
+            self.window = MainWindow()
+        self.assertEqual(self.window.language, "en")
+        self.assertEqual(self.window.start_button.text(), "Start Processing")
+
+    def test_language_switch_updates_ui_without_changing_form_state(self) -> None:
+        source = Path(self.test_temp.name) / "貼圖 sheet.png"
+        output = Path(self.test_temp.name) / "輸出 root"
+        self.window.source_edit.setText(str(source))
+        self.window.output_edit.setText(str(output))
+        self.window.platform_combo.setCurrentIndex(self.window.platform_combo.findData("both"))
+        self.window.background_tolerance_spin.setValue(12)
+        self.window.remove_background_checkbox.setChecked(True)
+
+        self.window.language_combo.setCurrentIndex(self.window.language_combo.findData("en"))
+        self.assertEqual(self.window.start_button.text(), "Start Processing")
+        self.assertEqual(self.window.source_edit.text(), str(source))
+        self.assertEqual(self.window.output_edit.text(), str(output))
+        self.assertEqual(self.window.platform_combo.currentData(), "both")
+        self.assertEqual(self.window.background_tolerance_spin.value(), 12)
+        self.assertTrue(self.window.remove_background_checkbox.isChecked())
+
+        self.window.language_combo.setCurrentIndex(self.window.language_combo.findData("zh_CN"))
+        self.assertEqual(self.window.start_button.text(), "开始处理")
+        self.assertEqual(self.window.settings.value("language"), "zh_CN")
+        self.assertEqual(self.window.platform_combo.currentData(), "both")
 
     def test_windows_uses_user_scope_ini_settings(self) -> None:
         with patch("sticker_toolkit.ui.desktop.main_window.sys.platform", "win32"):

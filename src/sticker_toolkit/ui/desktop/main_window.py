@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import cast
 
-from PySide6.QtCore import QSettings, Qt, QThread, Slot
+from PySide6.QtCore import QLocale, QSettings, Qt, QThread, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -42,6 +42,14 @@ from sticker_toolkit.core import (
 from sticker_toolkit.version import __version__
 
 from .controllers import StickerController
+from .i18n import (
+    LANGUAGE_LABELS,
+    normalize_language,
+    tr,
+    translate_progress,
+    translate_user_message,
+    translate_visible_text,
+)
 from .output_paths import output_directory_from_root, suggested_output_directory
 from .platform_utils import open_in_file_manager
 from .view_model import (
@@ -75,10 +83,17 @@ class MainWindow(QMainWindow):
         self._thread: QThread | None = None
         self._worker: StickerWorker | None = None
         self._last_result: ProcessingResult | None = None
+        self._last_error: Exception | None = None
         self._output_user_selected = False
         self._solid_background_color = "#FFF8EC"
         self._batch_source_paths: list[Path] = []
         self._last_input_mode = "sheet"
+        saved_language = self.settings.value("language")
+        self.language = normalize_language(
+            str(saved_language) if saved_language is not None else None,
+            QLocale.system().name(),
+        )
+        self._last_progress_message = ""
         self.line_cover_mode_combo: QComboBox
         self.line_cover_edit: QLineEdit
         self.line_cover_button: QPushButton
@@ -92,6 +107,8 @@ class MainWindow(QMainWindow):
         self._update_cover_state()
         self._update_background_state()
         self._refresh_start_enabled()
+
+        self._retranslate_ui()
 
     def _build_ui(self) -> None:
         self.setWindowTitle(f"Sticker Toolkit {__version__}")
@@ -117,9 +134,21 @@ class MainWindow(QMainWindow):
         self.scroll_area.setWidget(root)
         self.setCentralWidget(self.scroll_area)
 
+        header = QHBoxLayout()
         title = QLabel("Sticker Toolkit")
         title.setStyleSheet("font-size: 22px; font-weight: 600;")
-        layout.addWidget(title)
+        header.addWidget(title)
+        header.addStretch(1)
+        self.language_label = QLabel("Language:")
+        self.language_combo = QComboBox()
+        for code, label in LANGUAGE_LABELS.items():
+            self.language_combo.addItem(label, code)
+        language_index = self.language_combo.findData(self.language)
+        self.language_combo.setCurrentIndex(language_index if language_index >= 0 else 0)
+        self.language_combo.currentIndexChanged.connect(self._change_language)
+        header.addWidget(self.language_label)
+        header.addWidget(self.language_combo)
+        layout.addLayout(header)
 
         mode_group = QGroupBox("輸入模式")
         mode_layout = QFormLayout(mode_group)
@@ -281,6 +310,63 @@ class MainWindow(QMainWindow):
         self.open_output_button.clicked.connect(self._open_output)
         layout.addWidget(self.open_output_button)
 
+    def _t(self, key: str, **kwargs: object) -> str:
+        return tr(self.language, key, **kwargs)
+
+    @Slot()
+    def _change_language(self) -> None:
+        self.language = normalize_language(str(self.language_combo.currentData() or "en"))
+        self.settings.setValue("language", self.language)
+        self.settings.sync()
+        self._retranslate_ui()
+
+    def _retranslate_ui(self) -> None:
+        self.setWindowTitle(self._t("window.title", version=__version__))
+        self.language_label.setText(self._t("language.label"))
+        for widget_type in (QLabel, QPushButton, QCheckBox):
+            for widget in self.findChildren(widget_type):
+                if widget is self.language_label:
+                    continue
+                text = widget.property("text")
+                if isinstance(text, str):
+                    widget.setProperty("text", translate_visible_text(self.language, text))
+                if widget.toolTip():
+                    widget.setToolTip(translate_visible_text(self.language, widget.toolTip()))
+        for group in self.findChildren(QGroupBox):
+            group.setTitle(translate_visible_text(self.language, group.title()))
+            if group.toolTip():
+                group.setToolTip(translate_visible_text(self.language, group.toolTip()))
+        for edit in self.findChildren(QLineEdit):
+            edit.setPlaceholderText(translate_visible_text(self.language, edit.placeholderText()))
+        for combo in self.findChildren(QComboBox):
+            if combo is self.language_combo:
+                continue
+            current = combo.currentData()
+            for index in range(combo.count()):
+                combo.setItemText(
+                    index,
+                    translate_visible_text(self.language, combo.itemText(index)),
+                )
+            combo.setCurrentIndex(combo.findData(current))
+        self.batch_count_label.setText(self._t("batch.count", count=len(self._batch_source_paths)))
+        self.source_button.setText(
+            self._t("button.choose_16")
+            if self.input_mode_combo.currentData() == "wechat_batch"
+            else self._t("button.choose_image")
+        )
+        if self._last_progress_message:
+            self.status_label.setText(translate_progress(self.language, self._last_progress_message))
+        else:
+            self.status_label.setText(translate_visible_text(self.language, self.status_label.text()))
+        if self._last_result is not None:
+            self.result_text.setPlainText(result_summary(self._last_result, self.language))
+        elif self._last_error is not None:
+            self.result_text.setPlainText(
+                translate_user_message(self.language, user_error_message(self._last_error, self.language))
+            )
+        self._update_cover_state()
+        self._refresh_detected_background_color()
+
     def _build_cover_group(self, title: str, key: str) -> QGroupBox:
         group = QGroupBox(title)
         layout = QHBoxLayout(group)
@@ -343,18 +429,18 @@ class MainWindow(QMainWindow):
         if self.input_mode_combo.currentData() == "wechat_batch":
             paths, _ = QFileDialog.getOpenFileNames(
                 self,
-                "選擇 16 張 WeChat 貼圖",
+                self._t("dialog.choose_batch"),
                 self._dialog_directory("last_source_directory"),
-                "圖片 (*.png *.jpg *.jpeg)",
+                self._t("dialog.images"),
             )
             if paths:
                 self._apply_batch_source_paths([Path(path) for path in paths])
             return
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "選擇貼圖合集",
+            self._t("dialog.choose_sheet"),
             self._dialog_directory("last_source_directory"),
-            "圖片 (*.png *.jpg *.jpeg *.webp)",
+            self._t("dialog.images_webp"),
         )
         if path:
             self._apply_source_path(Path(path))
@@ -364,7 +450,7 @@ class MainWindow(QMainWindow):
         self.batch_list.clear()
         for index, path in enumerate(paths, 1):
             self.batch_list.addItem(f"{index:02d}  {path.name}")
-        self.batch_count_label.setText(f"已選擇 {len(paths)} / 16 張")
+        self.batch_count_label.setText(self._t("batch.count", count=len(paths)))
         self.source_edit.setText(str(paths[0]) if paths else "")
         if paths:
             self.settings.setValue("last_source_directory", str(paths[0].parent))
@@ -412,7 +498,7 @@ class MainWindow(QMainWindow):
         ):
             widget.setVisible(batch)
         self.source_edit.setVisible(not batch)
-        self.source_button.setText("選擇 16 張圖片" if batch else "選擇圖片")
+        self.source_button.setText(self._t("button.choose_16") if batch else self._t("button.choose_image"))
         self.rows_spin.setEnabled(not batch and self._thread is None)
         self.columns_spin.setEnabled(not batch and self._thread is None)
         if batch:
@@ -427,7 +513,7 @@ class MainWindow(QMainWindow):
             if changed:
                 self._batch_source_paths = []
                 self.batch_list.clear()
-                self.batch_count_label.setText("已選擇 0 / 16 張")
+                self.batch_count_label.setText(self._t("batch.count", count=0))
                 self.source_edit.clear()
                 if not self._output_user_selected:
                     self.output_edit.clear()
@@ -446,7 +532,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _choose_background_color(self) -> None:
-        selected = QColorDialog.getColor(parent=self, title="選擇純色背景")
+        selected = QColorDialog.getColor(parent=self, title=self._t("dialog.choose_background"))
         if selected.isValid():
             self._solid_background_color = selected.name().upper()
             self.background_color_label.setText(self._solid_background_color)
@@ -465,9 +551,11 @@ class MainWindow(QMainWindow):
             logger.exception("Unable to preview the detected solid background color")
             detected = None
         if detected is None:
-            self.background_color_label.setText(f"未自動偵測；使用 {self._solid_background_color}")
+            self.background_color_label.setText(
+                self._t("background.fallback", color=self._solid_background_color)
+            )
         else:
-            self.background_color_label.setText(f"偵測到背景色：{color_to_hex(detected)}")
+            self.background_color_label.setText(self._t("background.detected", color=color_to_hex(detected)))
 
     @Slot()
     def _update_background_state(self) -> None:
@@ -482,9 +570,9 @@ class MainWindow(QMainWindow):
     def _choose_cover(self, key: str) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "選擇封面圖片",
+            self._t("dialog.choose_cover"),
             self._dialog_directory("last_source_directory"),
-            "圖片 (*.png *.jpg *.jpeg)",
+            self._t("dialog.images"),
         )
         if path:
             getattr(self, f"{key}_cover_edit").setText(path)
@@ -507,7 +595,9 @@ class MainWindow(QMainWindow):
             group.setEnabled(enabled and not processing)
             custom = mode.currentData() == "custom"
             button.setEnabled(enabled and custom and not processing)
-            edit.setPlaceholderText("請選擇封面圖片" if custom else "自動產生")
+            edit.setPlaceholderText(
+                self._t("placeholder.cover.choose") if custom else self._t("placeholder.cover.auto")
+            )
             if not custom:
                 edit.clear()
         self._refresh_start_enabled()
@@ -516,9 +606,9 @@ class MainWindow(QMainWindow):
     def _choose_banner(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "選擇微信 Banner",
+            self._t("dialog.choose_banner"),
             self._dialog_directory("last_source_directory"),
-            "圖片 (*.png *.jpg *.jpeg *.webp)",
+            self._t("dialog.images_webp"),
         )
         if path:
             self.banner_edit.setText(path)
@@ -532,7 +622,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def _choose_output(self) -> None:
         path = QFileDialog.getExistingDirectory(
-            self, "選擇輸出目錄", self._dialog_directory("last_manual_output_directory")
+            self, self._t("dialog.choose_output"), self._dialog_directory("last_manual_output_directory")
         )
         if path:
             self.output_edit.setText(path)
@@ -594,12 +684,15 @@ class MainWindow(QMainWindow):
         try:
             source, options = self.controller.build_request(self._form_data())
         except DesktopValidationError as exc:
-            QMessageBox.warning(self, "輸入資料不完整", str(exc))
+            QMessageBox.warning(
+                self, self._t("dialog.input_incomplete"), translate_user_message(self.language, str(exc))
+            )
             return
         self.settings.setValue("input_mode", options.input_mode)
         self.settings.setValue("platform", options.platform)
         self.progress_bar.setValue(0)
-        self.status_label.setText("正在啟動處理…")
+        self._last_progress_message = ""
+        self.status_label.setText(self._t("status.starting"))
         self.result_text.clear()
         self.open_output_button.setEnabled(False)
         self._set_processing(True)
@@ -654,24 +747,27 @@ class MainWindow(QMainWindow):
     @Slot(int, str)
     def _on_progress(self, percent: int, message: str) -> None:
         self.progress_bar.setValue(max(0, min(100, percent)))
-        self.status_label.setText(message)
+        self._last_progress_message = message
+        self.status_label.setText(translate_progress(self.language, message))
 
     @Slot(object)
     def _on_completed(self, result: ProcessingResult) -> None:
         self._last_result = result
+        self._last_error = None
         self.progress_bar.setValue(100)
-        self.status_label.setText("處理完成")
-        self.result_text.setPlainText(result_summary(result))
+        self.status_label.setText(self._t("status.completed"))
+        self.result_text.setPlainText(result_summary(result, self.language))
         self.open_output_button.setEnabled(True)
-        QMessageBox.information(self, "處理完成", "貼圖素材已成功輸出。")
+        QMessageBox.information(self, self._t("dialog.completed.title"), self._t("dialog.completed.body"))
 
     @Slot(object)
     def _on_failed(self, error: Exception) -> None:
         self._last_result = None
-        self.status_label.setText("處理失敗")
-        message = user_error_message(error)
+        self._last_error = error
+        self.status_label.setText(self._t("status.failed"))
+        message = translate_user_message(self.language, user_error_message(error, self.language))
         self.result_text.setPlainText(message)
-        QMessageBox.critical(self, "處理失敗", message)
+        QMessageBox.critical(self, self._t("dialog.failed"), message)
 
     @Slot()
     def _on_worker_finished(self) -> None:
@@ -687,11 +783,11 @@ class MainWindow(QMainWindow):
             open_in_file_manager(output_directory_from_root(Path(self.output_edit.text())))
         except OSError as exc:
             logger.exception("Unable to open output directory")
-            QMessageBox.warning(self, "無法開啟輸出目錄", str(exc))
+            QMessageBox.warning(self, self._t("dialog.output_failed"), str(exc))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         if self._thread is not None:
-            QMessageBox.information(self, "處理進行中", "請等待目前的圖片處理完成。")
+            QMessageBox.information(self, self._t("dialog.processing"), self._t("dialog.processing_wait"))
             event.ignore()
             return
         self.settings.setValue("input_mode", self.input_mode_combo.currentData())
@@ -700,6 +796,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("auto_detect_solid_background", self.auto_background_checkbox.isChecked())
         self.settings.setValue("solid_background_color", self._solid_background_color)
         self.settings.setValue("solid_background_tolerance", self.background_tolerance_spin.value())
+        self.settings.setValue("language", self.language)
         self.settings.setValue("window_geometry", self.saveGeometry())
         self.settings.sync()
         super().closeEvent(event)
