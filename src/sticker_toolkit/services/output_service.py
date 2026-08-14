@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from core.paths import OutputPaths
-from exporters.line import export_line
+from exporters.line import export_line, export_line_animated
 from exporters.wechat import WechatExportResult, export_wechat
 from sticker_toolkit.core.models import PlatformProcessingResult, ProcessingOptions
 
@@ -40,6 +40,22 @@ def export_line_result(
     )
 
 
+def export_line_animated_result(
+    stickers: list[Image.Image], paths: OutputPaths, options: ProcessingOptions
+) -> PlatformProcessingResult:
+    created_zip = export_line_animated(stickers, paths)
+    zip_file: Path | None = created_zip
+    if not options.create_zip:
+        created_zip.unlink(missing_ok=True)
+        zip_file = None
+    return PlatformProcessingResult(
+        platform="line_animated",
+        output_directory=paths.line_directory,
+        sticker_files=sticker_files(paths.line_directory, len(stickers)),
+        zip_file=zip_file,
+    )
+
+
 def export_wechat_result(
     stickers: list[Image.Image], paths: OutputPaths, options: ProcessingOptions
 ) -> tuple[PlatformProcessingResult, WechatExportResult]:
@@ -49,6 +65,7 @@ def export_wechat_result(
         options.banner_path,
         options.wechat_cover_index,
         options.wechat_cover_path,
+        auto_generate_banner=options.input_mode == "sheet",
     )
     zip_file: Path | None = exported.zip_path
     if not options.create_zip:

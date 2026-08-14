@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from core.config import LINE_CONFIG, WECHAT_CONFIG
+from core.config import LINE_ANIMATED_CONFIG, LINE_CONFIG, WECHAT_CONFIG
 from core.images import load_image
 from core.paths import PreviewPaths
 from exporters.common import clean_directory, save_rgba_png
@@ -36,6 +36,17 @@ def create_line_preview(
     ]
     preview_file = previews.line_directory / LINE_CONFIG.preview_name
     save_rgba_png(make_line_preview(stickers, main_image, tab_image, messages), preview_file)
+    return replace(result, preview_file=preview_file)
+
+
+def create_line_animated_preview(
+    stickers: list[Image.Image], previews: PreviewPaths, result: PlatformProcessingResult
+) -> PlatformProcessingResult:
+    preview_file = previews.line_directory / LINE_ANIMATED_CONFIG.preview_name
+    frames = [
+        load_image(path, f"LINE 動圖 frame {index:02d}") for index, path in enumerate(result.sticker_files, 1)
+    ]
+    save_rgba_png(make_preview(frames), preview_file)
     return replace(result, preview_file=preview_file)
 
 

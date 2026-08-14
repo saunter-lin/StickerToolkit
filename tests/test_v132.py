@@ -188,13 +188,13 @@ class CustomCoverTests(unittest.TestCase):
         self.assertEqual(custom.getpixel((120, 120))[:3], (240, 20, 80))
         self.assertNotEqual(automatic[:3], custom.getpixel((120, 120))[:3])
 
-    def test_wechat_custom_cover_keeps_panel_existing_behavior(self) -> None:
+    def test_wechat_custom_cover_is_used_for_panel_icon(self) -> None:
         result = export_wechat(self.stickers, self.paths.output, None, 1, self.cover)
         with Image.open(result.cover_path) as cover:
             self.assertEqual(cover.size, (240, 240))
             self.assertEqual(cover.getpixel((120, 120))[:3], (240, 20, 80))
         with Image.open(result.panel_icon_path) as panel:
-            self.assertNotEqual(panel.getpixel((25, 25))[:3], (240, 20, 80))
+            self.assertEqual(panel.getpixel((25, 25))[:3], (240, 20, 80))
 
 
 class BatchDesktopTests(unittest.TestCase):

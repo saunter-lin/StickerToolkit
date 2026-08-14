@@ -63,7 +63,12 @@ from .workers import StickerWorker
 
 logger = logging.getLogger(__name__)
 
-PLATFORMS = (("LINE", "line"), ("微信", "wechat"), ("LINE＋微信", "both"))
+PLATFORMS = (
+    ("LINE", "line"),
+    ("LINE 動圖", "line_animated"),
+    ("微信", "wechat"),
+    ("LINE＋微信", "both"),
+)
 CONTENT_MAX_WIDTH = 1080
 
 

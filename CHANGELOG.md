@@ -1,5 +1,21 @@
 # Changelog
 
+## [v1.3.5] — 2026-08-14
+
+### Added
+
+- 新增 LINE 動圖 frame preparation preset，輸出 16 張 270×270 RGBA PNG、Preview 與 ZIP，不產生 Main／Tab 或 APNG。
+
+### Fixed
+
+- 確認 4×4 自動輸出路徑會隨新來源更新，並保留使用者手動指定的輸出根目錄。
+- 4×4 WeChat 未指定 Banner 時會由 Final Cover 自動產生；Batch Banner 仍維持必填。
+- LINE Tab 統一由 Final Main 衍生，WeChat panel icon 統一由 Final Cover 衍生，涵蓋自動與自選圖片。
+
+### Compatibility
+
+- LINE 靜態、WeChat、Batch、切圖、去背、Preview、ZIP、i18n 與既有輸出命名維持原規格。
+
 ## [v1.3.4] — 2026-08-12
 
 ### Added

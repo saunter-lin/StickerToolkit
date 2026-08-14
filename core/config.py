@@ -76,4 +76,12 @@ LINE_CONFIG = PlatformConfig(
     tab_padding=5,
 )
 
+LINE_ANIMATED_CONFIG = PlatformConfig(
+    name="LINE Animated",
+    sticker_size=(270, 270),
+    sticker_padding=12,
+    zip_name="line_sticker.zip",
+    preview_name="preview.png",
+)
+
 WECHAT_CONFIG = WechatConfig()

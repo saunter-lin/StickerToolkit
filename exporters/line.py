@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from core.config import LINE_CONFIG
+from core.config import LINE_ANIMATED_CONFIG, LINE_CONFIG
 from core.images import StickerError, contain, load_image
 from core.paths import OutputPaths
 
@@ -48,7 +48,7 @@ def export_line(
     )
     main_image = contain(main_source, LINE_CONFIG.main_size, LINE_CONFIG.main_padding)
     save_rgba_png(main_image, main_path)
-    save_rgba_png(contain(stickers[tab_index - 1], LINE_CONFIG.tab_size, LINE_CONFIG.tab_padding), tab_path)
+    save_rgba_png(contain(main_image, LINE_CONFIG.tab_size, LINE_CONFIG.tab_padding), tab_path)
     validate_png(main_path, LINE_CONFIG.main_size)
     validate_png(tab_path, LINE_CONFIG.tab_size)
     zip_path = paths.line_zip
@@ -61,3 +61,22 @@ def export_line(
             raise StickerError(f"無法清除舊版 LINE ZIP：{old_name}（{exc}）") from exc
     write_zip(zip_path, entries)
     return zip_path
+
+
+def export_line_animated(stickers: list[Image.Image], paths: OutputPaths) -> Path:
+    """Export PNG frames for Sticker Motion Toolkit; intentionally does not encode APNG."""
+    clean_directory(paths.line_directory, "LINE 動圖輸出")
+    remove_file(paths.line_zip, "LINE 動圖 ZIP")
+    entries: list[tuple[Path, str]] = []
+    for index, sticker in enumerate(stickers, 1):
+        path = paths.line_directory / f"{index:02d}.png"
+        frame = contain(
+            sticker,
+            LINE_ANIMATED_CONFIG.sticker_size,
+            LINE_ANIMATED_CONFIG.sticker_padding,
+        )
+        save_rgba_png(frame, path)
+        validate_png(path, LINE_ANIMATED_CONFIG.sticker_size)
+        entries.append((path, f"line_sticker/{path.name}"))
+    write_zip(paths.line_zip, entries)
+    return paths.line_zip

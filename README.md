@@ -2,7 +2,7 @@
 
 Sticker Toolkit 是一套支援 macOS 與 Windows 的桌面貼圖處理工具，可將 AI 生成的規則 4×4 貼圖組圖切成 16 張，或直接整理 16 張 WeChat 單圖。程式提供純色背景透明化、等比例縮放、安全留白、平台素材製作、Preview 與 ZIP 打包，可輸出 LINE、WeChat，或在 4×4 模式中同時輸出兩種平台。
 
-目前版本為 **v1.3.4**。
+目前版本為 **v1.3.5**。GitHub Releases 的最新正式安裝檔目前為 v1.3.4。
 
 ## Quick Start
 
@@ -48,6 +48,7 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，第一次執�
 - LINE：貼圖、`main.png`、`tab.png`、Preview 與 ZIP
 - WeChat：貼圖、Banner、`cover.png`、`panel_icon.png`、Preview 與 ZIP
 - 4×4 模式可選擇 LINE、WeChat 或同時輸出
+- LINE 動圖 preset 可將 4×4 組圖準備成 16 張 270×270 透明 PNG frames，供後續動圖工具使用；本工具不編碼 APNG
 - LINE main 與 WeChat cover 可自動產生或選擇自訂圖片
 - 使用透明 RGBA PNG，並檢查尺寸、格式及平台檔案大小限制
 - 三語錯誤訊息、實際處理進度、結果摘要及開啟輸出資料夾
@@ -63,7 +64,7 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，第一次執�
 
 1. 選擇來源 PNG、JPG 或 JPEG。
 2. 選擇 LINE、WeChat 或 LINE＋WeChat。
-3. 視需要選擇 WeChat Banner、封面來源及背景透明化。
+3. 視需要選擇 WeChat Banner、封面來源及背景透明化；4×4 WeChat 未指定 Banner 時會自動產生。
 4. 開始處理並檢查 Preview。
 
 程式只切割一次，再由 LINE 與 WeChat 共用處理後的貼圖圖片。來源檔不會被修改。
@@ -227,7 +228,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Python "C:
 
 ## Version / CHANGELOG / Roadmap
 
-- 目前版本：`v1.3.4`
+- 目前版本：`v1.3.5`
 - 版本演進：[CHANGELOG.md](CHANGELOG.md)
 - 正式下載：[GitHub Releases](https://github.com/saunter-lin/StickerToolkit/releases)
 

@@ -65,8 +65,8 @@ def validate_form(data: DesktopFormData) -> None:
             raise DesktopValidationError(f"找不到批次圖片：{Path(missing[0]).name}")
     elif not data.source_path.strip():
         raise DesktopValidationError("請先選擇來源圖片。")
-    if data.platform not in {"line", "wechat", "both"}:
-        raise DesktopValidationError("請選擇 LINE、微信或 LINE＋微信。")
+    if data.platform not in {"line", "line_animated", "wechat", "both"}:
+        raise DesktopValidationError("請選擇 LINE、LINE 動圖、微信或 LINE＋微信。")
     if data.rows <= 0 or data.columns <= 0:
         raise DesktopValidationError("切割設定必須為正整數，且不可為 0。")
     if (data.rows, data.columns) != (4, 4):

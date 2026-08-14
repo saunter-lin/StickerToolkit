@@ -32,8 +32,13 @@ from sticker_toolkit.core.models import (
     ProgressCallback,
 )
 from sticker_toolkit.presets import PRESETS
-from sticker_toolkit.services.output_service import export_line_result, export_wechat_result
+from sticker_toolkit.services.output_service import (
+    export_line_animated_result,
+    export_line_result,
+    export_wechat_result,
+)
 from sticker_toolkit.services.preview_service import (
+    create_line_animated_preview,
     create_line_preview,
     create_selection_preview,
     create_wechat_preview,
@@ -92,7 +97,7 @@ class StickerService:
         progress_callback: ProgressCallback | None = None,
         options_callback: OptionsCallback | None = None,
     ) -> ProcessingResult:
-        if options.platform not in {"line", "wechat", "both"}:
+        if options.platform not in {"line", "line_animated", "wechat", "both"}:
             raise StickerToolkitError(f"不支援的輸出平台：{options.platform}")
         if options.input_mode not in {"sheet", "wechat_batch"}:
             raise StickerToolkitError(f"不支援的輸入模式：{options.input_mode}")
@@ -155,7 +160,7 @@ class StickerService:
             paths.output.root.mkdir(parents=True, exist_ok=True)
             results: list[PlatformProcessingResult] = []
             selection_files: list[Path] = []
-            if options.create_preview and options.platform in {"line", "both"}:
+            if options.create_preview and options.platform in {"line", "line_animated", "both"}:
                 create_selection_preview(stickers, paths.preview.line_directory)
                 selection_files.append(paths.preview.line_directory / "selection.png")
             if options.create_preview and options.platform in {"wechat", "both"}:
@@ -176,6 +181,16 @@ class StickerService:
                     self._report(progress_callback, 75, "正在產生 LINE 預覽")
                     line_result = create_line_preview(stickers, paths.preview, line_result)
                 results.append(line_result)
+
+            if options.platform == "line_animated":
+                self._report(progress_callback, 55, "正在產生 LINE 動圖 frames")
+                if not options.create_preview:
+                    remove_directory(paths.preview.line_directory, "LINE 動圖 Preview")
+                animated_result = export_line_animated_result(stickers, paths.output, options)
+                if options.create_preview:
+                    self._report(progress_callback, 75, "正在產生 LINE 動圖預覽")
+                    animated_result = create_line_animated_preview(stickers, paths.preview, animated_result)
+                results.append(animated_result)
 
             if options.platform in {"wechat", "both"}:
                 self._report(progress_callback, 80, "正在產生 WeChat 素材")

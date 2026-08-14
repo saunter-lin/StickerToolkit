@@ -33,8 +33,7 @@ def validate_sticker_count(count: int) -> None:
         )
 
 
-def prepare_banner(banner_path: Path, output_path: Path) -> Path:
-    banner = load_image(banner_path, "WeChat Banner")
+def prepare_banner_image(banner: Image.Image, output_path: Path) -> Path:
     prepared = contain(banner, WECHAT_CONFIG.banner_size, WECHAT_CONFIG.banner_padding)
     save_optimized_png(
         prepared,
@@ -43,6 +42,10 @@ def prepare_banner(banner_path: Path, output_path: Path) -> Path:
         "微信詳情頁橫幅超過 500KB，請簡化圖片內容或調整輸出品質。",
     )
     return output_path
+
+
+def prepare_banner(banner_path: Path, output_path: Path) -> Path:
+    return prepare_banner_image(load_image(banner_path, "WeChat Banner"), output_path)
 
 
 def _save_stickers(stickers: list[Image.Image], staging: Path) -> tuple[list[Path], list[tuple[Path, str]]]:
@@ -68,6 +71,8 @@ def export_wechat(
     banner_path: Path | None,
     cover_index: int = 1,
     cover_source_path: Path | None = None,
+    *,
+    auto_generate_banner: bool = False,
 ) -> WechatExportResult:
     validate_sticker_count(len(stickers))
     if not 1 <= cover_index <= len(stickers):
@@ -95,7 +100,7 @@ def export_wechat(
 
     panel_icon_path = staging / "panel_icon.png"
     panel_icon = contain(
-        stickers[cover_index - 1],
+        cover,
         WECHAT_CONFIG.panel_icon_size,
         WECHAT_CONFIG.panel_icon_padding,
     )
@@ -110,6 +115,9 @@ def export_wechat(
     prepared_banner: Path | None = None
     if banner_path is not None:
         prepared_banner = prepare_banner(banner_path, staging / "banner.png")
+        entries.append((prepared_banner, "banner.png"))
+    elif auto_generate_banner:
+        prepared_banner = prepare_banner_image(cover, staging / "banner.png")
         entries.append((prepared_banner, "banner.png"))
 
     for old_name in ("wechat_sticker_package.zip",):
