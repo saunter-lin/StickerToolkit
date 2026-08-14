@@ -171,16 +171,18 @@ class V135DesktopTests(unittest.TestCase):
         self.assertEqual(self.window.platform_combo.currentText(), "LINE Animated")
 
     def test_sheet_output_path_refresh_and_manual_override(self) -> None:
-        first = Path("/tmp/source-a.png")
-        second = Path("/tmp/source-b.png")
+        temporary_root = Path(tempfile.gettempdir())
+        first = temporary_root / "source-a.png"
+        second = temporary_root / "source-b.png"
         self.window._apply_source_path(first)
-        self.assertEqual(self.window.output_edit.text(), "/tmp/source-a_output")
+        self.assertEqual(Path(self.window.output_edit.text()), temporary_root / "source-a_output")
         self.window._apply_source_path(second)
-        self.assertEqual(self.window.output_edit.text(), "/tmp/source-b_output")
+        self.assertEqual(Path(self.window.output_edit.text()), temporary_root / "source-b_output")
         self.window._output_user_selected = True
-        self.window.output_edit.setText("/tmp/custom-output")
+        custom_output = temporary_root / "custom-output"
+        self.window.output_edit.setText(str(custom_output))
         self.window._apply_source_path(first)
-        self.assertEqual(self.window.output_edit.text(), "/tmp/custom-output")
+        self.assertEqual(Path(self.window.output_edit.text()), custom_output)
 
 
 class V135ConfigTests(unittest.TestCase):
