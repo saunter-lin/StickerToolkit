@@ -5,6 +5,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -18,6 +19,7 @@ from exporters.line import export_line, prepare_line_tab_image
 from exporters.wechat import export_wechat, prepare_wechat_panel_icon_image
 from sticker_toolkit.core import ProcessingOptions, StickerToolkitError
 from sticker_toolkit.services import StickerService
+from sticker_toolkit.services.output_service import export_cover_result
 from sticker_toolkit.ui.desktop.main_window import MainWindow
 from sticker_toolkit.ui.desktop.view_model import DesktopFormData, DesktopValidationError, validate_form
 
@@ -196,6 +198,46 @@ class V135ExportTests(unittest.TestCase):
                 ),
             )
 
+    def test_sheet_does_not_dispatch_or_create_standalone_cover_output(self) -> None:
+        output = self.root / "sheet-only-output"
+        with patch(
+            "sticker_toolkit.services.sticker_service.export_cover_result",
+            wraps=export_cover_result,
+        ) as standalone_export:
+            result = StickerService().process(
+                self.source,
+                ProcessingOptions(platform="both", input_mode="sheet", output_directory=output),
+            )
+        standalone_export.assert_not_called()
+        self.assertFalse((output / "cover_output").exists())
+        line_main = result.for_platform("line").main_file
+        wechat_cover = result.for_platform("wechat").cover_file
+        assert line_main is not None and wechat_cover is not None
+        self.assertTrue(line_main.is_file())
+        self.assertTrue(wechat_cover.is_file())
+
+    def test_main_cover_dispatches_standalone_generator_only(self) -> None:
+        source = self.root / "standalone.png"
+        Image.new("RGBA", (300, 180), (25, 90, 210, 255)).save(source)
+        output_root = self.root / "standalone-root"
+        with patch(
+            "sticker_toolkit.services.sticker_service.export_cover_result",
+            wraps=export_cover_result,
+        ) as standalone_export:
+            result = StickerService().process(
+                source,
+                ProcessingOptions(
+                    platform="main_cover",
+                    input_mode="main_cover",
+                    output_directory=output_root,
+                ),
+            )
+        standalone_export.assert_called_once()
+        exported = result.for_platform("main_cover")
+        self.assertEqual(exported.output_directory, output_root.resolve() / "cover_output")
+        self.assertEqual(exported.sticker_files, ())
+        self.assertFalse((output_root / "output").exists())
+
 
 class V135DesktopTests(unittest.TestCase):
     @classmethod
@@ -264,6 +306,20 @@ class V135DesktopTests(unittest.TestCase):
                     input_mode="main_cover",
                 )
             )
+
+    def test_main_cover_request_keeps_cover_output_outside_standard_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "single-cover.png"
+            output_root = root / "single-cover-root"
+            Image.new("RGBA", (100, 100), (20, 80, 160, 255)).save(source)
+            self.window.input_mode_combo.setCurrentIndex(
+                self.window.input_mode_combo.findData("main_cover")
+            )
+            self.window.source_edit.setText(str(source))
+            self.window.output_edit.setText(str(output_root))
+            _, options = self.window.controller.build_request(self.window._form_data())
+            self.assertEqual(options.output_directory, output_root.resolve())
 
     def test_legacy_line_animated_setting_migrates_to_input_mode(self) -> None:
         self.window.close()

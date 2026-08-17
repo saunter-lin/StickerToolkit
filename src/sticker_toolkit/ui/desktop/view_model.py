@@ -80,7 +80,12 @@ def validate_form(data: DesktopFormData) -> None:
         raise DesktopValidationError("找不到來源圖片，請重新選擇。")
     if not data.output_directory.strip():
         raise DesktopValidationError("請選擇輸出目錄。")
-    output = output_directory_from_root(Path(data.output_directory))
+    output_root = Path(data.output_directory)
+    output = (
+        output_root / "cover_output"
+        if data.input_mode == "main_cover"
+        else output_directory_from_root(output_root)
+    )
     if not output_directory_is_writable(output):
         raise DesktopValidationError("輸出目錄無法寫入，請選擇其他位置。")
     if data.banner_path.strip() and not Path(data.banner_path).expanduser().is_file():
@@ -111,7 +116,11 @@ def build_processing_options(data: DesktopFormData) -> ProcessingOptions:
         rows=data.rows,
         columns=data.columns,
         trim_enabled=data.trim_enabled,
-        output_directory=output_directory_from_root(Path(data.output_directory)).resolve(),
+        output_directory=(
+            Path(data.output_directory)
+            if data.input_mode == "main_cover"
+            else output_directory_from_root(Path(data.output_directory))
+        ).resolve(),
         create_preview=data.create_preview,
         create_zip=data.create_zip,
         banner_path=banner,

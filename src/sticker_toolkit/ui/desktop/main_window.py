@@ -821,7 +821,13 @@ class MainWindow(QMainWindow):
         if self._last_result is None:
             return
         try:
-            open_in_file_manager(output_directory_from_root(Path(self.output_edit.text())))
+            output = (
+                self._last_result.platforms[0].output_directory
+                if self._last_result.platforms
+                and self._last_result.platforms[0].platform == "main_cover"
+                else output_directory_from_root(Path(self.output_edit.text()))
+            )
+            open_in_file_manager(output)
         except OSError as exc:
             logger.exception("Unable to open output directory")
             QMessageBox.warning(self, self._t("dialog.output_failed"), str(exc))

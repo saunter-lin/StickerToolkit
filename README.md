@@ -122,11 +122,6 @@ GUI 顯示或自動建議的是「輸出根目錄」。實際產物統一放在�
 <root>/output/
 ├── line_sticker/
 ├── wechat_sticker/
-├── cover_output/
-│   ├── main.png
-│   ├── tab.png
-│   ├── cover.png
-│   └── panel_icon.png
 ├── preview/
 │   ├── line/
 │   └── wechat/
@@ -135,7 +130,7 @@ GUI 顯示或自動建議的是「輸出根目錄」。實際產物統一放在�
 ```
 
 - 4×4 模式會建議來源圖片同層的 `<來源檔名>_output` 作為根目錄。例如 `berry.png` 會使用 `berry_output/`，實際產物位於 `berry_output/output/`。
-- Main / Cover 使用相同的自動根目錄規則，四個檔案集中於 `<root>/output/cover_output/`，不會與貼圖輸出混放。
+- Main / Cover 使用相同的自動根目錄規則，四個檔案獨立集中於 `<root>/cover_output/`，不會放進 4×4／Batch／LINE 動圖共用的 `<root>/output/`。
 - Batch 模式會以目前第一張圖片所在資料夾作為自動根目錄；圖片來自不同資料夾時仍以第一張為準。
 - 使用者手動指定的根目錄具有優先權，不會因重新排序或移除 Batch 圖片而被覆蓋。
 - 若選擇的資料夾本身已名為 `output`，程式會直接使用，不會建立 `output/output`。
