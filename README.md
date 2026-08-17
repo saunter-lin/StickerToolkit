@@ -121,6 +121,7 @@ GUI 顯示或自動建議的是「輸出根目錄」。實際產物統一放在�
 ```text
 <root>/output/
 ├── line_sticker/
+├── line_animated/
 ├── wechat_sticker/
 ├── preview/
 │   ├── line/

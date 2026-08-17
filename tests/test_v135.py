@@ -57,6 +57,8 @@ class V135ExportTests(unittest.TestCase):
             .for_platform("line_animated")
         )
         self.assertEqual(len(result.sticker_files), 16)
+        self.assertEqual(result.output_directory.name, "line_animated")
+        self.assertFalse((output / "line_sticker").exists())
         self.assertIsNone(result.main_file)
         self.assertIsNone(result.tab_file)
         self.assertFalse((result.output_directory / "main.png").exists())
@@ -87,6 +89,8 @@ class V135ExportTests(unittest.TestCase):
                 )
                 with Image.open(result.sticker_files[0]) as image:
                     self.assertEqual(image.size, expected)
+                if platform == "line":
+                    self.assertEqual(result.output_directory.name, "line_sticker")
 
     def test_custom_line_main_is_the_source_for_tab(self) -> None:
         custom = self.root / "custom-main.png"

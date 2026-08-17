@@ -421,11 +421,9 @@ class MainWindow(QMainWindow):
         )
         self._solid_background_color = str(self.settings.value("solid_background_color", "#FFF8EC")).upper()
         self.background_color_label.setText(self._solid_background_color)
-        mode = str(self.settings.value("output_directory_mode", ""))
-        output = str(self.settings.value("last_manual_output_directory", ""))
-        if mode == "manual" and output and Path(output).is_dir():
-            self.output_edit.setText(output)
-            self._output_user_selected = True
+        # Manual output selection is intentionally session-only. Remove legacy persisted keys.
+        self.settings.remove("output_directory_mode")
+        self.settings.remove("last_manual_output_directory")
         geometry = self.settings.value("window_geometry")
         if geometry is not None:
             self.restoreGeometry(geometry)
@@ -654,15 +652,14 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _choose_output(self) -> None:
+        source = Path(self.source_edit.text()).expanduser() if self.source_edit.text() else None
+        initial_directory = str(source.parent) if source is not None else str(Path.home())
         path = QFileDialog.getExistingDirectory(
-            self, self._t("dialog.choose_output"), self._dialog_directory("last_manual_output_directory")
+            self, self._t("dialog.choose_output"), initial_directory
         )
         if path:
             self.output_edit.setText(path)
             self._output_user_selected = True
-            self.settings.setValue("output_directory_mode", "manual")
-            self.settings.setValue("last_manual_output_directory", path)
-            self.settings.sync()
             self._refresh_start_enabled()
 
     @Slot()

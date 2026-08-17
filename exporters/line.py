@@ -77,11 +77,11 @@ def export_line(
 
 def export_line_animated(stickers: list[Image.Image], paths: OutputPaths) -> Path:
     """Export PNG frames for Sticker Motion Toolkit; intentionally does not encode APNG."""
-    clean_directory(paths.line_directory, "LINE 動圖輸出")
+    clean_directory(paths.line_animated_directory, "LINE 動圖輸出")
     remove_file(paths.line_zip, "LINE 動圖 ZIP")
     entries: list[tuple[Path, str]] = []
     for index, sticker in enumerate(stickers, 1):
-        path = paths.line_directory / f"{index:02d}.png"
+        path = paths.line_animated_directory / f"{index:02d}.png"
         frame = contain(
             sticker,
             LINE_ANIMATED_CONFIG.sticker_size,

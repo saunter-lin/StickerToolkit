@@ -64,8 +64,8 @@ def export_line_animated_result(
         zip_file = None
     return PlatformProcessingResult(
         platform="line_animated",
-        output_directory=paths.line_directory,
-        sticker_files=sticker_files(paths.line_directory, len(stickers)),
+        output_directory=paths.line_animated_directory,
+        sticker_files=sticker_files(paths.line_animated_directory, len(stickers)),
         zip_file=zip_file,
     )
 

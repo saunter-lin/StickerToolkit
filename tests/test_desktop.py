@@ -447,26 +447,27 @@ class MainWindowStateTests(unittest.TestCase):
             self.window._choose_output()
         self.window._apply_source_path(Path(self.test_temp.name) / "another.sheet.png")
         self.assertEqual(self.window.output_edit.text(), str(manual))
-        self.assertEqual(self.window.settings.value("output_directory_mode"), "manual")
-        self.assertEqual(self.window.settings.value("last_manual_output_directory"), str(manual))
+        self.assertTrue(self.window._output_user_selected)
+        self.assertIsNone(self.window.settings.value("output_directory_mode"))
+        self.assertIsNone(self.window.settings.value("last_manual_output_directory"))
 
-    def test_settings_restore_only_existing_manual_output(self) -> None:
+    def test_manual_output_is_not_restored_in_a_new_session(self) -> None:
         manual = Path(self.test_temp.name) / "saved"
         manual.mkdir()
         self.window.settings.setValue("output_directory_mode", "manual")
         self.window.settings.setValue("last_manual_output_directory", str(manual))
-        with patch.object(QMessageBox, "information"):
-            self.window.close()
-        self.window = MainWindow()
-        self.assertEqual(self.window.output_edit.text(), str(manual))
-        self.assertTrue(self.window._output_user_selected)
-
-        self.window.settings.setValue("last_manual_output_directory", str(manual / "missing"))
+        self.window.language_combo.setCurrentIndex(self.window.language_combo.findData("en"))
         with patch.object(QMessageBox, "information"):
             self.window.close()
         self.window = MainWindow()
         self.assertEqual(self.window.output_edit.text(), "")
         self.assertFalse(self.window._output_user_selected)
+        self.assertIsNone(self.window.settings.value("output_directory_mode"))
+        self.assertIsNone(self.window.settings.value("last_manual_output_directory"))
+        self.assertEqual(self.window.language, "en")
+        source = Path(self.test_temp.name) / "source-c.png"
+        self.window._apply_source_path(source)
+        self.assertEqual(self.window.output_edit.text(), str(source.parent / "source-c_output"))
 
     def test_banner_controls_follow_platform(self) -> None:
         self.window.platform_combo.setCurrentIndex(self.window.platform_combo.findData("line"))

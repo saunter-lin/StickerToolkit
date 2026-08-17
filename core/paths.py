@@ -10,6 +10,7 @@ from pathlib import Path
 class OutputPaths:
     root: Path
     line_directory: Path
+    line_animated_directory: Path
     wechat_directory: Path
     line_zip: Path
     wechat_zip: Path
@@ -38,6 +39,7 @@ class ProjectPaths:
             output=OutputPaths(
                 root=output_root,
                 line_directory=output_root / "line_sticker",
+                line_animated_directory=output_root / "line_animated",
                 wechat_directory=output_root / wechat_directory_name,
                 line_zip=output_root / "line_sticker.zip",
                 wechat_zip=output_root / "wechat_sticker.zip",
