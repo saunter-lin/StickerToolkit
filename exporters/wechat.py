@@ -48,6 +48,18 @@ def prepare_banner(banner_path: Path, output_path: Path) -> Path:
     return prepare_banner_image(load_image(banner_path, "WeChat Banner"), output_path)
 
 
+def prepare_wechat_cover_image(source: Image.Image) -> Image.Image:
+    return contain(source, WECHAT_CONFIG.cover_size, WECHAT_CONFIG.cover_padding)
+
+
+def prepare_wechat_panel_icon_image(cover_image: Image.Image) -> Image.Image:
+    return contain(
+        cover_image,
+        WECHAT_CONFIG.panel_icon_size,
+        WECHAT_CONFIG.panel_icon_padding,
+    )
+
+
 def _save_stickers(stickers: list[Image.Image], staging: Path) -> tuple[list[Path], list[tuple[Path, str]]]:
     paths: list[Path] = []
     entries: list[tuple[Path, str]] = []
@@ -89,7 +101,7 @@ def export_wechat(
         if cover_source_path is not None
         else stickers[cover_index - 1]
     )
-    cover = contain(cover_source, WECHAT_CONFIG.cover_size, WECHAT_CONFIG.cover_padding)
+    cover = prepare_wechat_cover_image(cover_source)
     save_optimized_png(
         cover,
         cover_path,
@@ -99,11 +111,7 @@ def export_wechat(
     entries.append((cover_path, "cover.png"))
 
     panel_icon_path = staging / "panel_icon.png"
-    panel_icon = contain(
-        cover,
-        WECHAT_CONFIG.panel_icon_size,
-        WECHAT_CONFIG.panel_icon_padding,
-    )
+    panel_icon = prepare_wechat_panel_icon_image(cover)
     save_optimized_png(
         panel_icon,
         panel_icon_path,

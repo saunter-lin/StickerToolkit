@@ -15,6 +15,18 @@ from .common import clean_directory, remove_file, save_rgba_png, validate_png, w
 OLD_LINE_ZIP_NAMES = ("line_sticker_package.zip", "line_stickers.zip")
 
 
+def prepare_line_main_image(source: Image.Image) -> Image.Image:
+    if LINE_CONFIG.main_size is None:
+        raise RuntimeError("LINE_CONFIG 缺少 main 尺寸。")
+    return contain(source, LINE_CONFIG.main_size, LINE_CONFIG.main_padding)
+
+
+def prepare_line_tab_image(main_image: Image.Image) -> Image.Image:
+    if LINE_CONFIG.tab_size is None:
+        raise RuntimeError("LINE_CONFIG 缺少 tab 尺寸。")
+    return contain(main_image, LINE_CONFIG.tab_size, LINE_CONFIG.tab_padding)
+
+
 def export_line(
     stickers: list[Image.Image],
     paths: OutputPaths,
@@ -46,9 +58,9 @@ def export_line(
         if main_source_path is not None
         else stickers[main_index - 1]
     )
-    main_image = contain(main_source, LINE_CONFIG.main_size, LINE_CONFIG.main_padding)
+    main_image = prepare_line_main_image(main_source)
     save_rgba_png(main_image, main_path)
-    save_rgba_png(contain(main_image, LINE_CONFIG.tab_size, LINE_CONFIG.tab_padding), tab_path)
+    save_rgba_png(prepare_line_tab_image(main_image), tab_path)
     validate_png(main_path, LINE_CONFIG.main_size)
     validate_png(tab_path, LINE_CONFIG.tab_size)
     zip_path = paths.line_zip

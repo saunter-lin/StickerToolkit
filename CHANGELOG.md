@@ -5,6 +5,7 @@
 ### Added
 
 - 新增 LINE 動圖 frame preparation preset，輸出 16 張 270×270 RGBA PNG、Preview 與 ZIP，不產生 Main／Tab 或 APNG。
+- 新增獨立 Main / Cover 單圖模式，一次產生 LINE `main.png`／`tab.png` 與 WeChat `cover.png`／`panel_icon.png`。
 
 ### Fixed
 

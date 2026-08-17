@@ -48,7 +48,7 @@ def banner_enabled(platform: str) -> bool:
 
 
 def validate_form(data: DesktopFormData) -> None:
-    if data.input_mode not in {"sheet", "wechat_batch"}:
+    if data.input_mode not in {"sheet", "wechat_batch", "line_animated", "main_cover"}:
         raise DesktopValidationError("請選擇有效的輸入模式。")
     if data.input_mode == "wechat_batch":
         count = len(data.batch_source_paths)
@@ -65,11 +65,15 @@ def validate_form(data: DesktopFormData) -> None:
             raise DesktopValidationError(f"找不到批次圖片：{Path(missing[0]).name}")
     elif not data.source_path.strip():
         raise DesktopValidationError("請先選擇來源圖片。")
-    if data.platform not in {"line", "line_animated", "wechat", "both"}:
+    if data.input_mode == "line_animated" and data.platform != "line_animated":
+        raise DesktopValidationError("LINE 動圖模式必須使用 LINE 動圖輸出。")
+    if data.input_mode == "main_cover" and data.platform != "main_cover":
+        raise DesktopValidationError("Main / Cover 模式必須使用 Main / Cover 輸出。")
+    if data.platform not in {"line", "line_animated", "wechat", "both", "main_cover"}:
         raise DesktopValidationError("請選擇 LINE、LINE 動圖、微信或 LINE＋微信。")
     if data.rows <= 0 or data.columns <= 0:
         raise DesktopValidationError("切割設定必須為正整數，且不可為 0。")
-    if (data.rows, data.columns) != (4, 4):
+    if data.input_mode != "main_cover" and (data.rows, data.columns) != (4, 4):
         raise DesktopValidationError("目前版本僅支援 4 × 4 貼圖合集。")
     source = Path(data.source_path).expanduser()
     if not source.is_file():
@@ -138,6 +142,12 @@ def result_summary(result: ProcessingResult, language: str = "zh_TW") -> str:
         tr(language, "summary.platforms", platforms=", ".join(item.platform for item in result.platforms)),
     ]
     for item in result.platforms:
+        if item.platform == "main_cover":
+            lines.append(tr(language, "summary.cover_files"))
+            lines.append(
+                tr(language, "summary.directory", platform=item.platform, path=item.output_directory)
+            )
+            continue
         lines.append(tr(language, "summary.stickers", platform=item.platform, count=len(item.sticker_files)))
         lines.append(tr(language, "summary.directory", platform=item.platform, path=item.output_directory))
         missing = tr(language, "summary.not_created")

@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from core.paths import OutputPaths
+from exporters.covers import export_cover_assets
 from exporters.line import export_line, export_line_animated
 from exporters.wechat import WechatExportResult, export_wechat
 from sticker_toolkit.core.models import PlatformProcessingResult, ProcessingOptions
@@ -14,6 +15,19 @@ from sticker_toolkit.core.models import PlatformProcessingResult, ProcessingOpti
 
 def sticker_files(directory: Path, count: int) -> tuple[Path, ...]:
     return tuple(directory / f"{index:02d}.png" for index in range(1, count + 1))
+
+
+def export_cover_result(source: Image.Image, output_root: Path) -> PlatformProcessingResult:
+    exported = export_cover_assets(source, output_root / "cover_output")
+    return PlatformProcessingResult(
+        platform="main_cover",
+        output_directory=exported.output_directory,
+        sticker_files=(),
+        main_file=exported.main_path,
+        tab_file=exported.tab_path,
+        cover_file=exported.cover_path,
+        panel_icon_file=exported.panel_icon_path,
+    )
 
 
 def export_line_result(

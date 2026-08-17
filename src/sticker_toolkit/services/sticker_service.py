@@ -33,6 +33,7 @@ from sticker_toolkit.core.models import (
 )
 from sticker_toolkit.presets import PRESETS
 from sticker_toolkit.services.output_service import (
+    export_cover_result,
     export_line_animated_result,
     export_line_result,
     export_wechat_result,
@@ -97,10 +98,14 @@ class StickerService:
         progress_callback: ProgressCallback | None = None,
         options_callback: OptionsCallback | None = None,
     ) -> ProcessingResult:
-        if options.platform not in {"line", "line_animated", "wechat", "both"}:
+        if options.platform not in {"line", "line_animated", "wechat", "both", "main_cover"}:
             raise StickerToolkitError(f"不支援的輸出平台：{options.platform}")
-        if options.input_mode not in {"sheet", "wechat_batch"}:
+        if options.input_mode not in {"sheet", "wechat_batch", "line_animated", "main_cover"}:
             raise StickerToolkitError(f"不支援的輸入模式：{options.input_mode}")
+        if options.input_mode == "main_cover" and options.platform != "main_cover":
+            raise StickerToolkitError("Main / Cover 模式必須使用 Main / Cover 輸出。")
+        if options.input_mode == "line_animated" and options.platform != "line_animated":
+            raise StickerToolkitError("LINE 動圖模式必須使用 LINE 動圖輸出。")
         if options.input_mode == "wechat_batch":
             if options.platform != "wechat":
                 raise StickerToolkitError("WeChat 批次單圖模式僅支援微信輸出。")
@@ -110,7 +115,7 @@ class StickerService:
                 )
             if options.banner_path is None:
                 raise StickerToolkitError("WeChat 批次單圖模式必須選擇 Banner。")
-        elif (options.rows, options.columns) != (4, 4):
+        elif options.input_mode != "main_cover" and (options.rows, options.columns) != (4, 4):
             raise InvalidGridError("目前貼圖合集必須使用 4×4 格線。")
         if not options.trim_enabled:
             raise StickerToolkitError("v1.3 仍固定啟用 Trim。")
@@ -124,6 +129,15 @@ class StickerService:
 
         self._report(progress_callback, 0, "準備處理")
         try:
+            if options.input_mode == "main_cover":
+                self._report(progress_callback, 20, "正在讀取封面圖片")
+                source = load_image(source_path, "Main / Cover 來源圖片")
+                paths = ProjectPaths.from_output(options.output_directory.expanduser().resolve())
+                paths.output.root.mkdir(parents=True, exist_ok=True)
+                self._report(progress_callback, 60, "正在產生 Main / Cover 素材")
+                cover_result = export_cover_result(source, paths.output.root)
+                self._report(progress_callback, 100, "處理完成")
+                return ProcessingResult(source_path, (cover_result,))
             if options.input_mode == "wechat_batch":
                 self._report(progress_callback, 10, "正在讀取批次圖片")
                 stickers = self._build_batch_stickers(options, progress_callback)

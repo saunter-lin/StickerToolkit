@@ -14,11 +14,12 @@ from PySide6.QtWidgets import QApplication
 
 from core.config import LINE_ANIMATED_CONFIG, LINE_CONFIG, WECHAT_CONFIG
 from core.paths import ProjectPaths
-from exporters.line import export_line
-from exporters.wechat import export_wechat
-from sticker_toolkit.core import ProcessingOptions
+from exporters.line import export_line, prepare_line_tab_image
+from exporters.wechat import export_wechat, prepare_wechat_panel_icon_image
+from sticker_toolkit.core import ProcessingOptions, StickerToolkitError
 from sticker_toolkit.services import StickerService
 from sticker_toolkit.ui.desktop.main_window import MainWindow
+from sticker_toolkit.ui.desktop.view_model import DesktopFormData, DesktopValidationError, validate_form
 
 
 def make_sheet(path: Path) -> None:
@@ -132,6 +133,69 @@ class V135ExportTests(unittest.TestCase):
         with Image.open(selected.banner_file) as banner:
             self.assertEqual(banner.getpixel((375, 200))[:3], (10, 40, 220))
 
+    def test_main_cover_mode_exports_four_derived_assets_from_png(self) -> None:
+        source = self.root / "single.png"
+        image = Image.new("RGBA", (420, 180), (0, 0, 0, 0))
+        ImageDraw.Draw(image).rectangle((80, 20, 340, 160), fill=(210, 35, 90, 220))
+        image.save(source)
+        result = (
+            StickerService()
+            .process(
+                source,
+                ProcessingOptions(
+                    platform="main_cover",
+                    input_mode="main_cover",
+                    output_directory=self.root / "covers",
+                ),
+            )
+            .for_platform("main_cover")
+        )
+        expected = {
+            "main.png": LINE_CONFIG.main_size,
+            "tab.png": LINE_CONFIG.tab_size,
+            "cover.png": WECHAT_CONFIG.cover_size,
+            "panel_icon.png": WECHAT_CONFIG.panel_icon_size,
+        }
+        self.assertEqual({path.name for path in result.output_directory.iterdir()}, set(expected))
+        self.assertEqual(result.sticker_files, ())
+        for name, size in expected.items():
+            with Image.open(result.output_directory / name) as exported:
+                self.assertEqual((exported.format, exported.mode, exported.size), ("PNG", "RGBA", size))
+        assert result.main_file is not None and result.tab_file is not None
+        assert result.cover_file is not None and result.panel_icon_file is not None
+        with Image.open(result.main_file) as main, Image.open(result.tab_file) as tab:
+            expected_tab = prepare_line_tab_image(main.convert("RGBA"))
+            self.assertEqual(tab.tobytes(), expected_tab.tobytes())
+        with Image.open(result.cover_file) as cover, Image.open(result.panel_icon_file) as panel:
+            expected_panel = prepare_wechat_panel_icon_image(cover.convert("RGBA"))
+            self.assertEqual(panel.tobytes(), expected_panel.tobytes())
+
+    def test_main_cover_mode_accepts_jpeg(self) -> None:
+        source = self.root / "single.jpg"
+        Image.new("RGB", (320, 240), (20, 120, 200)).save(source)
+        result = StickerService().process(
+            source,
+            ProcessingOptions(
+                platform="main_cover",
+                input_mode="main_cover",
+                output_directory=self.root / "jpeg-covers",
+            ),
+        )
+        self.assertEqual(len(tuple(result.for_platform("main_cover").output_directory.glob("*.png"))), 4)
+
+    def test_main_cover_mode_rejects_damaged_image_safely(self) -> None:
+        source = self.root / "damaged.png"
+        source.write_bytes(b"not an image")
+        with self.assertRaises(StickerToolkitError):
+            StickerService().process(
+                source,
+                ProcessingOptions(
+                    platform="main_cover",
+                    input_mode="main_cover",
+                    output_directory=self.root / "damaged-output",
+                ),
+            )
+
 
 class V135DesktopTests(unittest.TestCase):
     @classmethod
@@ -157,18 +221,66 @@ class V135DesktopTests(unittest.TestCase):
         self.window.close()
 
     def test_line_animated_selector_and_platform_ui_state(self) -> None:
-        index = self.window.platform_combo.findData("line_animated")
+        index = self.window.input_mode_combo.findData("line_animated")
         self.assertGreaterEqual(index, 0)
-        self.window.platform_combo.setCurrentIndex(index)
-        self.assertEqual(self.window.platform_combo.currentText(), "LINE 動圖")
+        self.window.input_mode_combo.setCurrentIndex(index)
+        self.assertEqual(self.window.input_mode_combo.currentText(), "LINE 動圖")
         self.assertFalse(self.window.line_cover_group.isEnabled())
         self.assertFalse(self.window.wechat_cover_group.isEnabled())
         self.assertFalse(self.window.banner_group.isEnabled())
 
         self.window.language_combo.setCurrentIndex(self.window.language_combo.findData("zh_CN"))
-        self.assertEqual(self.window.platform_combo.currentText(), "LINE 动图")
+        self.assertEqual(self.window.input_mode_combo.currentText(), "LINE 动图")
         self.window.language_combo.setCurrentIndex(self.window.language_combo.findData("en"))
-        self.assertEqual(self.window.platform_combo.currentText(), "LINE Animated")
+        self.assertEqual(self.window.input_mode_combo.currentText(), "LINE Animated")
+
+    def test_four_input_modes_and_main_cover_ui(self) -> None:
+        self.assertEqual(
+            [self.window.input_mode_combo.itemData(index) for index in range(4)],
+            ["sheet", "wechat_batch", "line_animated", "main_cover"],
+        )
+        self.window.input_mode_combo.setCurrentIndex(
+            self.window.input_mode_combo.findData("main_cover")
+        )
+        self.assertFalse(self.window.source_group.isHidden())
+        self.assertFalse(self.window.output_group.isHidden())
+        self.assertFalse(self.window.platform_group.isVisible())
+        self.assertFalse(self.window.grid_group.isVisible())
+        self.assertFalse(self.window.banner_group.isVisible())
+        self.assertFalse(self.window.options_group.isVisible())
+        self.assertFalse(self.window.background_group.isVisible())
+        self.assertEqual(self.window.start_button.text(), "產生 Main / Cover")
+
+    def test_main_cover_requires_source(self) -> None:
+        with self.assertRaises(DesktopValidationError):
+            validate_form(
+                DesktopFormData(
+                    source_path="",
+                    platform="main_cover",
+                    rows=4,
+                    columns=4,
+                    banner_path="",
+                    output_directory=tempfile.gettempdir(),
+                    input_mode="main_cover",
+                )
+            )
+
+    def test_legacy_line_animated_setting_migrates_to_input_mode(self) -> None:
+        self.window.close()
+        for settings in (
+            QSettings("StickerToolkit", "StickerToolkit"),
+            QSettings(
+                QSettings.Format.IniFormat,
+                QSettings.Scope.UserScope,
+                "StickerToolkit",
+                "StickerToolkit",
+            ),
+        ):
+            settings.setValue("input_mode", "sheet")
+            settings.setValue("platform", "line_animated")
+            settings.sync()
+        self.window = MainWindow()
+        self.assertEqual(self.window.input_mode_combo.currentData(), "line_animated")
 
     def test_sheet_output_path_refresh_and_manual_override(self) -> None:
         temporary_root = Path(tempfile.gettempdir())

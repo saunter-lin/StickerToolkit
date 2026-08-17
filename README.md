@@ -1,6 +1,6 @@
 # Sticker Toolkit
 
-Sticker Toolkit 是一套支援 macOS 與 Windows 的桌面貼圖處理工具，可將 AI 生成的規則 4×4 貼圖組圖切成 16 張，或直接整理 16 張 WeChat 單圖。程式提供純色背景透明化、等比例縮放、安全留白、平台素材製作、Preview 與 ZIP 打包，可輸出 LINE、WeChat，或在 4×4 模式中同時輸出兩種平台。
+Sticker Toolkit 是一套支援 macOS 與 Windows 的桌面貼圖處理工具，可將 AI 生成的規則 4×4 貼圖組圖切成 16 張、整理 16 張 WeChat 單圖，或從單張圖片產生 LINE／WeChat 封面素材。程式提供純色背景透明化、等比例縮放、安全留白、平台素材製作、Preview 與 ZIP 打包。
 
 目前版本為 **v1.3.5**。GitHub Releases 的最新正式安裝檔目前為 v1.3.4。
 
@@ -49,6 +49,7 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，第一次執�
 - WeChat：貼圖、Banner、`cover.png`、`panel_icon.png`、Preview 與 ZIP
 - 4×4 模式可選擇 LINE、WeChat 或同時輸出
 - LINE 動圖 preset 可將 4×4 組圖準備成 16 張 270×270 透明 PNG frames，供後續動圖工具使用；本工具不編碼 APNG
+- 獨立 Main / Cover 模式可由單張 PNG／JPEG 一次產生 `main.png`、`tab.png`、`cover.png` 與 `panel_icon.png`
 - LINE main 與 WeChat cover 可自動產生或選擇自訂圖片
 - 使用透明 RGBA PNG，並檢查尺寸、格式及平台檔案大小限制
 - 三語錯誤訊息、實際處理進度、結果摘要及開啟輸出資料夾
@@ -57,6 +58,8 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，第一次執�
 首次啟動時，Desktop GUI 會依系統語言選擇繁體中文、简体中文或 English。使用者可在主視窗右上角即時切換，程式會記住選擇；介面語言不會改變圖片處理方式、輸出內容、檔名或資料夾結構。
 
 ## Usage
+
+主視窗提供四個入口：4×4 貼圖組圖、WeChat 16 張單圖 Batch、LINE 動圖與 Main / Cover。
 
 ### 4×4 Sticker Sheet
 
@@ -78,6 +81,14 @@ Windows 版本目前未使用 Microsoft Code Signing Certificate，第一次執�
 - 實際輸出順序與 GUI 清單順序一致。
 - 正式開始處理前必須整理為正好 16 張。
 - Batch 模式必須另外選擇 WeChat Banner。
+
+### LINE Animated
+
+使用規則 4×4 組圖產生 16 張 270×270 RGBA PNG frames、Preview 與 ZIP；不會產生 `main.png`、`tab.png` 或 APNG。
+
+### Main / Cover
+
+選擇一張 PNG、JPG 或 JPEG，即可同時產生 LINE 與 WeChat 的四個封面類素材。`tab.png` 由最終 `main.png` 衍生，`panel_icon.png` 由最終 `cover.png` 衍生；此模式不執行 4×4 切割，也不會輸出 16 張貼圖。
 
 ### Background Removal
 
@@ -111,6 +122,11 @@ GUI 顯示或自動建議的是「輸出根目錄」。實際產物統一放在�
 <root>/output/
 ├── line_sticker/
 ├── wechat_sticker/
+├── cover_output/
+│   ├── main.png
+│   ├── tab.png
+│   ├── cover.png
+│   └── panel_icon.png
 ├── preview/
 │   ├── line/
 │   └── wechat/
@@ -119,6 +135,7 @@ GUI 顯示或自動建議的是「輸出根目錄」。實際產物統一放在�
 ```
 
 - 4×4 模式會建議來源圖片同層的 `<來源檔名>_output` 作為根目錄。例如 `berry.png` 會使用 `berry_output/`，實際產物位於 `berry_output/output/`。
+- Main / Cover 使用相同的自動根目錄規則，四個檔案集中於 `<root>/output/cover_output/`，不會與貼圖輸出混放。
 - Batch 模式會以目前第一張圖片所在資料夾作為自動根目錄；圖片來自不同資料夾時仍以第一張為準。
 - 使用者手動指定的根目錄具有優先權，不會因重新排序或移除 Batch 圖片而被覆蓋。
 - 若選擇的資料夾本身已名為 `output`，程式會直接使用，不會建立 `output/output`。
@@ -150,7 +167,7 @@ GUI 顯示或自動建議的是「輸出根目錄」。實際產物統一放在�
 | Preview | `<root>/output/preview/wechat/wechat_preview.png` |
 | ZIP | `<root>/output/wechat_sticker.zip` |
 
-WeChat 驗證接受 8～24 張貼圖，以保留未來擴充彈性；目前 4×4 與 Batch UI 都處理 16 張。每張貼圖、Banner 與 cover 不超過 500KB，panel icon 不超過 100KB。一般 4×4 WeChat 流程若缺少 Banner，仍可匯出供檢查，但 Preview 會提示素材尚未完整；Batch 模式則必須先選擇 Banner。
+WeChat 驗證接受 8～24 張貼圖，以保留未來擴充彈性；目前 4×4 與 Batch UI 都處理 16 張。每張貼圖、Banner 與 cover 不超過 500KB，panel icon 不超過 100KB。一般 4×4 WeChat 流程若未指定 Banner，會由最終 Cover 自動產生；Batch 模式則必須先選擇 Banner。
 
 WeChat ZIP 不包含 `manifest.json` 或其他 JSON。
 
