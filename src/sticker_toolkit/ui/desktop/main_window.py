@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import cast
 
-from PySide6.QtCore import QLocale, QSettings, Qt, QThread, Slot
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtCore import QLocale, QSettings, QSize, Qt, QThread, Slot
+from PySide6.QtGui import QCloseEvent, QColor, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -35,9 +36,6 @@ from PySide6.QtWidgets import (
 
 from sticker_toolkit.core import (
     ProcessingResult,
-    color_to_hex,
-    detect_solid_background_color,
-    load_image,
 )
 from sticker_toolkit.version import __version__
 
@@ -69,6 +67,20 @@ PLATFORMS = (
     ("LINE＋微信", "both"),
 )
 CONTENT_MAX_WIDTH = 1080
+BACKGROUND_PRESET_OFFWHITE = "offwhite"
+BACKGROUND_PRESET_DARKBLUE = "darkblue"
+BACKGROUND_PRESET_CUSTOM = "custom"
+BACKGROUND_PRESETS = {
+    BACKGROUND_PRESET_OFFWHITE: "#FFF8EC",
+    BACKGROUND_PRESET_DARKBLUE: "#003366",
+}
+DEFAULT_CUSTOM_BACKGROUND_COLOR = "#FFF8EC"
+BACKGROUND_SWATCH_SIZE = QSize(32, 16)
+
+
+def _valid_background_color(value: object, fallback: str) -> str:
+    color = str(value).upper()
+    return color if re.fullmatch(r"#[0-9A-F]{6}", color) else fallback
 
 
 class MainWindow(QMainWindow):
@@ -90,6 +102,7 @@ class MainWindow(QMainWindow):
         self._last_error: Exception | None = None
         self._output_user_selected = False
         self._solid_background_color = "#FFF8EC"
+        self._custom_background_color = DEFAULT_CUSTOM_BACKGROUND_COLOR
         self._batch_source_paths: list[Path] = []
         self._last_input_mode = "sheet"
         saved_language = self.settings.value("language")
@@ -268,16 +281,13 @@ class MainWindow(QMainWindow):
         self.remove_background_checkbox.setToolTip(
             "只移除與畫布外部連通的指定背景色，適合固定純色背景的貼圖合集；不是 AI 去背。"
         )
-        self.auto_background_checkbox = QCheckBox("自動偵測背景色（推薦）")
-        self.auto_background_checkbox.setChecked(True)
-        self.background_color_label = QLabel("#FFF8EC")
-        self.background_color_button = QPushButton("選擇顏色")
-        color_row = QHBoxLayout()
-        color_row.addWidget(self.background_color_label)
-        color_row.addWidget(self.background_color_button)
-        color_row.addStretch(1)
-        color_widget = QWidget()
-        color_widget.setLayout(color_row)
+        self.background_preset_combo = QComboBox()
+        self.background_preset_combo.setIconSize(BACKGROUND_SWATCH_SIZE)
+        self.background_preset_combo.addItem("米白    #FFF8EC", BACKGROUND_PRESET_OFFWHITE)
+        self.background_preset_combo.addItem("深藍    #003366", BACKGROUND_PRESET_DARKBLUE)
+        self.background_preset_combo.addItem("自訂…    #FFF8EC", BACKGROUND_PRESET_CUSTOM)
+        self.background_preset_combo.currentIndexChanged.connect(self._apply_background_preset)
+        self.background_preset_combo.activated.connect(self._activate_background_preset)
         self.background_tolerance_spin = QSpinBox()
         self.background_tolerance_spin.setRange(0, 30)
         self.background_tolerance_spin.setValue(3)
@@ -286,12 +296,9 @@ class MainWindow(QMainWindow):
             "純色 PNG 建議 3～5；JPEG 或有壓縮色差的圖片可使用 10～15。"
         )
         background_layout.addRow(self.remove_background_checkbox)
-        background_layout.addRow(self.auto_background_checkbox)
-        background_layout.addRow("背景色：", color_widget)
+        background_layout.addRow("預設背景色：", self.background_preset_combo)
         background_layout.addRow("容差：", self.background_tolerance_spin)
         self.remove_background_checkbox.stateChanged.connect(self._update_background_state)
-        self.auto_background_checkbox.stateChanged.connect(self._update_background_state)
-        self.background_color_button.clicked.connect(self._choose_background_color)
         layout.addWidget(self.background_group)
 
         self.start_button = QPushButton("開始處理")
@@ -372,7 +379,7 @@ class MainWindow(QMainWindow):
             )
         self._update_cover_state()
         self._update_input_mode()
-        self._refresh_detected_background_color()
+        self._refresh_background_preset_items()
 
     def _build_cover_group(self, title: str, key: str) -> QGroupBox:
         group = QGroupBox(title)
@@ -413,14 +420,40 @@ class MainWindow(QMainWindow):
         self.remove_background_checkbox.setChecked(
             cast(bool, self.settings.value("remove_solid_background", False, type=bool))
         )
-        self.auto_background_checkbox.setChecked(
-            cast(bool, self.settings.value("auto_detect_solid_background", True, type=bool))
-        )
         self.background_tolerance_spin.setValue(
             int(str(self.settings.value("solid_background_tolerance", 3)))
         )
-        self._solid_background_color = str(self.settings.value("solid_background_color", "#FFF8EC")).upper()
-        self.background_color_label.setText(self._solid_background_color)
+        legacy_color = _valid_background_color(
+            self.settings.value("solid_background_color", DEFAULT_CUSTOM_BACKGROUND_COLOR),
+            DEFAULT_CUSTOM_BACKGROUND_COLOR,
+        )
+        legacy_auto = cast(
+            bool, self.settings.value("auto_detect_solid_background", True, type=bool)
+        )
+        saved_custom = _valid_background_color(
+            self.settings.value("solid_background_custom_color", legacy_color),
+            DEFAULT_CUSTOM_BACKGROUND_COLOR,
+        )
+        saved_preset = str(self.settings.value("solid_background_preset", ""))
+        if saved_preset not in {
+            BACKGROUND_PRESET_OFFWHITE,
+            BACKGROUND_PRESET_DARKBLUE,
+            BACKGROUND_PRESET_CUSTOM,
+        }:
+            if not legacy_auto and legacy_color == BACKGROUND_PRESETS[BACKGROUND_PRESET_DARKBLUE]:
+                saved_preset = BACKGROUND_PRESET_DARKBLUE
+            elif not legacy_auto and legacy_color != BACKGROUND_PRESETS[BACKGROUND_PRESET_OFFWHITE]:
+                saved_preset = BACKGROUND_PRESET_CUSTOM
+                saved_custom = legacy_color
+            else:
+                saved_preset = BACKGROUND_PRESET_OFFWHITE
+        self._custom_background_color = saved_custom
+        self.background_preset_combo.blockSignals(True)
+        self.background_preset_combo.setCurrentIndex(
+            self.background_preset_combo.findData(saved_preset)
+        )
+        self.background_preset_combo.blockSignals(False)
+        self._apply_background_preset()
         # Manual output selection is intentionally session-only. Remove legacy persisted keys.
         self.settings.remove("output_directory_mode")
         self.settings.remove("last_manual_output_directory")
@@ -467,7 +500,6 @@ class MainWindow(QMainWindow):
             self.settings.setValue("last_source_directory", str(paths[0].parent))
             if not self._output_user_selected:
                 self.output_edit.setText(str(paths[0].parent))
-        self._refresh_detected_background_color()
         self._refresh_start_enabled()
 
     def _move_batch_item(self, offset: int) -> None:
@@ -556,44 +588,77 @@ class MainWindow(QMainWindow):
         self.settings.setValue("last_source_directory", str(source.parent))
         if not self._output_user_selected:
             self.output_edit.setText(str(suggested_output_directory(source)))
-        self._refresh_detected_background_color()
         self._refresh_start_enabled()
 
     @Slot()
     def _choose_background_color(self) -> None:
-        selected = QColorDialog.getColor(parent=self, title=self._t("dialog.choose_background"))
+        selected = QColorDialog.getColor(
+            QColor(self._custom_background_color),
+            self,
+            self._t("dialog.choose_background"),
+        )
         if selected.isValid():
-            self._solid_background_color = selected.name().upper()
-            self.background_color_label.setText(self._solid_background_color)
+            self._custom_background_color = selected.name().upper()
+            self._solid_background_color = self._custom_background_color
+            self._persist_background_preferences()
+            self._refresh_background_preset_items()
 
-    def _refresh_detected_background_color(self) -> None:
-        if not (
-            self.remove_background_checkbox.isChecked()
-            and self.auto_background_checkbox.isChecked()
-            and self.source_edit.text()
-        ):
-            self.background_color_label.setText(self._solid_background_color)
-            return
-        try:
-            detected = detect_solid_background_color(load_image(Path(self.source_edit.text()), "貼圖合集"))
-        except Exception:  # UI 預覽失敗不阻止稍後的表單錯誤處理
-            logger.exception("Unable to preview the detected solid background color")
-            detected = None
-        if detected is None:
-            self.background_color_label.setText(
-                self._t("background.fallback", color=self._solid_background_color)
-            )
-        else:
-            self.background_color_label.setText(self._t("background.detected", color=color_to_hex(detected)))
+    @Slot()
+    def _apply_background_preset(self) -> None:
+        preset = str(self.background_preset_combo.currentData() or BACKGROUND_PRESET_OFFWHITE)
+        self._solid_background_color = BACKGROUND_PRESETS.get(
+            preset, self._custom_background_color
+        )
+        self._persist_background_preferences()
+        self._refresh_background_preset_items()
+
+    @Slot(int)
+    def _activate_background_preset(self, _index: int) -> None:
+        if self.background_preset_combo.currentData() == BACKGROUND_PRESET_CUSTOM:
+            self._choose_background_color()
+
+    def _persist_background_preferences(self) -> None:
+        self.settings.setValue(
+            "solid_background_preset", self.background_preset_combo.currentData()
+        )
+        self.settings.setValue("solid_background_custom_color", self._custom_background_color)
+        self.settings.sync()
+
+    @staticmethod
+    def _background_swatch(color: str) -> QIcon:
+        pixmap = QPixmap(BACKGROUND_SWATCH_SIZE)
+        pixmap.fill(QColor(color))
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(QColor("#808080"), 1))
+        painter.drawRect(
+            0,
+            0,
+            BACKGROUND_SWATCH_SIZE.width() - 1,
+            BACKGROUND_SWATCH_SIZE.height() - 1,
+        )
+        painter.end()
+        return QIcon(pixmap)
+
+    def _refresh_background_preset_items(self) -> None:
+        items = (
+            (BACKGROUND_PRESET_OFFWHITE, "background_preset.offwhite", "#FFF8EC"),
+            (BACKGROUND_PRESET_DARKBLUE, "background_preset.darkblue", "#003366"),
+            (
+                BACKGROUND_PRESET_CUSTOM,
+                "background_preset.custom",
+                self._custom_background_color,
+            ),
+        )
+        for preset, key, color in items:
+            index = self.background_preset_combo.findData(preset)
+            self.background_preset_combo.setItemText(index, f"{self._t(key)}    {color}")
+            self.background_preset_combo.setItemIcon(index, self._background_swatch(color))
 
     @Slot()
     def _update_background_state(self) -> None:
         enabled = self.remove_background_checkbox.isChecked() and self._thread is None
-        automatic = self.auto_background_checkbox.isChecked()
-        self.auto_background_checkbox.setEnabled(enabled)
-        self.background_color_button.setEnabled(enabled and not automatic)
+        self.background_preset_combo.setEnabled(enabled)
         self.background_tolerance_spin.setEnabled(enabled)
-        self._refresh_detected_background_color()
 
     @Slot()
     def _choose_cover(self, key: str) -> None:
@@ -687,7 +752,7 @@ class MainWindow(QMainWindow):
             create_preview=self.preview_checkbox.isChecked(),
             create_zip=self.zip_checkbox.isChecked(),
             remove_solid_background=self.remove_background_checkbox.isChecked(),
-            auto_detect_solid_background=self.auto_background_checkbox.isChecked(),
+            auto_detect_solid_background=False,
             solid_background_color=self._solid_background_color,
             solid_background_tolerance=self.background_tolerance_spin.value(),
         )
@@ -761,8 +826,7 @@ class MainWindow(QMainWindow):
             self.preview_checkbox,
             self.zip_checkbox,
             self.remove_background_checkbox,
-            self.auto_background_checkbox,
-            self.background_color_button,
+            self.background_preset_combo,
             self.background_tolerance_spin,
             self.line_cover_mode_combo,
             self.line_cover_button,
@@ -837,8 +901,12 @@ class MainWindow(QMainWindow):
         self.settings.setValue("input_mode", self.input_mode_combo.currentData())
         self.settings.setValue("platform", self.platform_combo.currentData())
         self.settings.setValue("remove_solid_background", self.remove_background_checkbox.isChecked())
-        self.settings.setValue("auto_detect_solid_background", self.auto_background_checkbox.isChecked())
+        self.settings.setValue("auto_detect_solid_background", False)
         self.settings.setValue("solid_background_color", self._solid_background_color)
+        self.settings.setValue(
+            "solid_background_preset", self.background_preset_combo.currentData()
+        )
+        self.settings.setValue("solid_background_custom_color", self._custom_background_color)
         self.settings.setValue("solid_background_tolerance", self.background_tolerance_spin.value())
         self.settings.setValue("language", self.language)
         self.settings.setValue("window_geometry", self.saveGeometry())

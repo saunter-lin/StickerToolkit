@@ -9,14 +9,20 @@ from unittest.mock import Mock, patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PIL import Image, ImageDraw
-from PySide6.QtCore import QEventLoop, QLocale, QSettings, QTimer
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PySide6.QtCore import QEventLoop, QLocale, QSettings, QSize, QTimer
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QApplication, QColorDialog, QFileDialog, QMessageBox
 
 from sticker_toolkit.core import ProcessingOptions, ProcessingResult
 from sticker_toolkit.services import StickerService
 from sticker_toolkit.ui.desktop import app as desktop_app
 from sticker_toolkit.ui.desktop.controllers import StickerController
-from sticker_toolkit.ui.desktop.main_window import MainWindow
+from sticker_toolkit.ui.desktop.main_window import (
+    BACKGROUND_PRESET_CUSTOM,
+    BACKGROUND_PRESET_DARKBLUE,
+    BACKGROUND_PRESET_OFFWHITE,
+    MainWindow,
+)
 from sticker_toolkit.ui.desktop.output_paths import (
     output_directory_from_root,
     suggested_output_directory,
@@ -304,25 +310,115 @@ class MainWindowStateTests(unittest.TestCase):
 
     def test_background_controls_are_disabled_until_feature_is_checked(self) -> None:
         self.assertFalse(self.window.remove_background_checkbox.isChecked())
-        self.assertFalse(self.window.auto_background_checkbox.isEnabled())
-        self.assertFalse(self.window.background_color_button.isEnabled())
+        self.assertFalse(self.window.background_preset_combo.isEnabled())
         self.assertFalse(self.window.background_tolerance_spin.isEnabled())
         self.window.remove_background_checkbox.setChecked(True)
-        self.assertTrue(self.window.auto_background_checkbox.isEnabled())
-        self.assertFalse(self.window.background_color_button.isEnabled())
+        self.assertTrue(self.window.background_preset_combo.isEnabled())
         self.assertTrue(self.window.background_tolerance_spin.isEnabled())
-        self.window.auto_background_checkbox.setChecked(False)
-        self.assertTrue(self.window.background_color_button.isEnabled())
 
-    def test_source_selection_displays_detected_background_color(self) -> None:
+    def test_background_presets_use_fixed_colors_and_native_swatches(self) -> None:
+        combo = self.window.background_preset_combo
+        self.assertEqual(combo.iconSize(), QSize(32, 16))
+        for preset, color in (
+            (BACKGROUND_PRESET_OFFWHITE, "#FFF8EC"),
+            (BACKGROUND_PRESET_DARKBLUE, "#003366"),
+        ):
+            index = combo.findData(preset)
+            combo.setCurrentIndex(index)
+            self.assertEqual(self.window._solid_background_color, color)
+            swatch = combo.itemIcon(index).pixmap(QSize(32, 16)).toImage()
+            self.assertEqual(swatch.size(), QSize(32, 16))
+            self.assertEqual(swatch.pixelColor(5, 5).name().upper(), color)
+            self.assertEqual(swatch.pixelColor(0, 0).name().upper(), "#808080")
+
+    def test_source_selection_keeps_selected_preset_color(self) -> None:
         source = Path(self.test_temp.name) / "純色 合集.png"
         Image.new("RGB", (80, 80), (255, 248, 236)).save(source)
         self.window.remove_background_checkbox.setChecked(True)
-        self.window._apply_source_path(source)
-        self.assertEqual(
-            self.window.background_color_label.text(),
-            "偵測到背景色：#FFF8EC",
+        self.window.background_preset_combo.setCurrentIndex(
+            self.window.background_preset_combo.findData(BACKGROUND_PRESET_DARKBLUE)
         )
+        self.window._apply_source_path(source)
+        self.assertEqual(self.window._solid_background_color, "#003366")
+        form = self.window._form_data()
+        self.assertFalse(form.auto_detect_solid_background)
+        self.assertEqual(form.solid_background_color, "#003366")
+
+    def test_custom_color_updates_separately_and_persists(self) -> None:
+        combo = self.window.background_preset_combo
+        combo.setCurrentIndex(combo.findData(BACKGROUND_PRESET_CUSTOM))
+        with patch.object(QColorDialog, "getColor", return_value=QColor("#287A65")):
+            combo.activated.emit(combo.currentIndex())
+        self.assertEqual(self.window._solid_background_color, "#287A65")
+        self.assertEqual(self.window.settings.value("solid_background_custom_color"), "#287A65")
+        self.assertIn("#287A65", combo.currentText())
+
+        combo.setCurrentIndex(combo.findData(BACKGROUND_PRESET_DARKBLUE))
+        self.assertEqual(self.window._solid_background_color, "#003366")
+        combo.setCurrentIndex(combo.findData(BACKGROUND_PRESET_CUSTOM))
+        self.assertEqual(self.window._solid_background_color, "#287A65")
+
+        with patch.object(QMessageBox, "information"):
+            self.window.close()
+        self.window = MainWindow()
+        self.assertEqual(
+            self.window.background_preset_combo.currentData(), BACKGROUND_PRESET_CUSTOM
+        )
+        self.assertEqual(self.window._solid_background_color, "#287A65")
+
+    def test_custom_color_can_be_updated_immediately(self) -> None:
+        combo = self.window.background_preset_combo
+        combo.setCurrentIndex(combo.findData(BACKGROUND_PRESET_CUSTOM))
+        with patch.object(QColorDialog, "getColor", return_value=QColor("#882244")):
+            self.window._choose_background_color()
+        self.assertEqual(self.window._custom_background_color, "#882244")
+        self.assertEqual(self.window._solid_background_color, "#882244")
+        self.assertIn("#882244", combo.currentText())
+        swatch = combo.itemIcon(combo.currentIndex()).pixmap(QSize(32, 16)).toImage()
+        self.assertEqual(swatch.pixelColor(5, 5).name().upper(), "#882244")
+
+    def test_each_background_preset_persists(self) -> None:
+        for preset in (
+            BACKGROUND_PRESET_OFFWHITE,
+            BACKGROUND_PRESET_DARKBLUE,
+            BACKGROUND_PRESET_CUSTOM,
+        ):
+            with self.subTest(preset=preset):
+                combo = self.window.background_preset_combo
+                combo.setCurrentIndex(combo.findData(preset))
+                with patch.object(QMessageBox, "information"):
+                    self.window.close()
+                self.window = MainWindow()
+                self.assertEqual(self.window.background_preset_combo.currentData(), preset)
+
+    def test_legacy_background_settings_migrate_safely(self) -> None:
+        with patch.object(QMessageBox, "information"):
+            self.window.close()
+        self._clear_desktop_settings()
+        settings = QSettings("StickerToolkit", "StickerToolkit")
+        settings.setValue("language", "zh_TW")
+        settings.setValue("auto_detect_solid_background", False)
+        settings.setValue("solid_background_color", "#287A65")
+        settings.sync()
+        self.window = MainWindow()
+        self.assertEqual(
+            self.window.background_preset_combo.currentData(), BACKGROUND_PRESET_CUSTOM
+        )
+        self.assertEqual(self.window._solid_background_color, "#287A65")
+
+        with patch.object(QMessageBox, "information"):
+            self.window.close()
+        self._clear_desktop_settings()
+        settings = QSettings("StickerToolkit", "StickerToolkit")
+        settings.setValue("solid_background_preset", "invalid")
+        settings.setValue("solid_background_custom_color", "not-a-color")
+        settings.setValue("solid_background_color", "broken")
+        settings.sync()
+        self.window = MainWindow()
+        self.assertEqual(
+            self.window.background_preset_combo.currentData(), BACKGROUND_PRESET_OFFWHITE
+        )
+        self.assertEqual(self.window._solid_background_color, "#FFF8EC")
 
     def test_start_disabled_without_source(self) -> None:
         self.assertFalse(self.window.start_button.isEnabled())

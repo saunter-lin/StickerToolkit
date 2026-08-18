@@ -42,3 +42,10 @@ def test_variable_translation_and_missing_key_fallback() -> None:
 def test_missing_language_entry_falls_back_to_english() -> None:
     with patch.dict(TRANSLATIONS, {"zh_CN": {}}, clear=False):
         assert tr("zh_CN", "button.start") == "Start Processing"
+
+
+def test_background_preset_labels_are_translated() -> None:
+    assert tr("zh_TW", "label.background_preset") == "預設背景色："
+    assert tr("zh_TW", "background_preset.darkblue") == "深藍"
+    assert tr("zh_CN", "background_preset.custom") == "自定义…"
+    assert tr("en", "background_preset.offwhite") == "Off-white"
